@@ -18,6 +18,7 @@ import { toast } from "sonner"
 import {
   adminDeleteAccommodation,
   adminDeleteVehicle,
+  adminListReservations,
   adminPatchAccommodation,
   adminPatchVehicle,
   organizerHasPassword,
@@ -33,6 +34,7 @@ import {
   type Accommodation,
   type AccommodationType,
   type Gender,
+  type Reservation,
   type TransportType,
   type Vehicle,
 } from "@/lib/types"
@@ -219,6 +221,15 @@ function PasswordField({
 function AdminDashboard({ password, onLogout }: { password: string; onLogout: () => void }) {
   const { data: accommodations = [], isLoading: loadingAcc } = useAccommodations()
   const { data: vehicles = [], isLoading: loadingVeh } = useVehicles()
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [loadingReservations, setLoadingReservations] = useState(true)
+
+  useEffect(() => {
+    adminListReservations(password)
+      .then(setReservations)
+      .catch(() => toast.error("Impossible de charger les réservations."))
+      .finally(() => setLoadingReservations(false))
+  }, [password])
 
   return (
     <div className="space-y-8">
@@ -255,6 +266,55 @@ function AdminDashboard({ password, onLogout }: { password: string; onLogout: ()
           </button>
         </div>
       </header>
+
+      <section>
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="font-serif text-2xl font-semibold text-[#6D1925]">Réservations</h2>
+            <p className="mt-1 text-xs text-[#6D1925]/50">Suivi des réservations confirmées et de l’envoi des emails.</p>
+          </div>
+          <span className="text-xs text-[#6D1925]/50">{reservations.length} réservation{reservations.length > 1 ? "s" : ""}</span>
+        </div>
+        {loadingReservations ? (
+          <p className="text-sm text-muted-foreground">Chargement…</p>
+        ) : reservations.length === 0 ? (
+          <Empty text="Aucune réservation pour le moment." />
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {reservations.map((reservation) => (
+              <div key={reservation.id} className="rounded-2xl border border-[#6D1925]/10 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-[#4B242B]">{reservation.reserver_nom}</p>
+                    <p className="mt-1 text-xs text-[#6D1925]/55">
+                      {reservation.offer_type === "accommodation" ? "Hébergement" : "Transport"} · {reservation.nb_personnes} personne{reservation.nb_personnes > 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <span className={"rounded-full px-2.5 py-1 text-[10px] font-semibold " + (
+                    reservation.email_status === "sent"
+                      ? "bg-emerald-50 text-emerald-700"
+                      : reservation.email_status === "failed"
+                        ? "bg-red-50 text-red-700"
+                        : "bg-amber-50 text-amber-700"
+                  )}>
+                    {reservation.email_status === "sent" ? "Emails envoyés" : reservation.email_status === "failed" ? "Échec email" : "Email en attente"}
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-1 text-xs text-[#5B4549]">
+                  <span>{reservation.reserver_email}</span>
+                  <span>{reservation.reserver_telephone}</span>
+                  {reservation.date_entree && reservation.date_sortie && (
+                    <span>{reservation.date_entree} → {reservation.date_sortie}</span>
+                  )}
+                  <span className="font-semibold text-[#6D1925]">
+                    Montant : {Number(reservation.montant_total || 0) === 0 ? "Gratuit" : Number(reservation.montant_total).toFixed(0) + " €"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section>
         <div className="mb-3 flex items-end justify-between gap-3">
@@ -309,6 +369,7 @@ function AccommodationAdminRow({ acc, password }: { acc: Accommodation; password
     propose_par: acc.propose_par ?? acc.contact ?? "",
     genre_proposant: (acc.genre_proposant ?? "femme") as Gender,
     telephone_proposant: acc.telephone_proposant ?? "",
+    email_proposant: acc.email_proposant ?? "",
     places_disponibles: acc.places_disponibles ?? acc.capacite,
     minutes_salle: acc.minutes_salle ?? 0,
     date_entree: acc.date_entree ?? "2026-12-30",
@@ -384,6 +445,9 @@ function AccommodationAdminRow({ acc, password }: { acc: Accommodation; password
           <Field title="Téléphone">
             <input className={field} value={form.telephone_proposant} onChange={(e) => set("telephone_proposant", e.target.value)} />
           </Field>
+          <Field title="Email">
+            <input className={field} type="email" value={form.email_proposant} onChange={(e) => set("email_proposant", e.target.value)} />
+          </Field>
           <Field title="Places restantes">
             <input className={field} type="number" min={0} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Math.max(0, Number(e.target.value) || 0))} />
           </Field>
@@ -436,6 +500,7 @@ function VehicleAdminRow({ veh, password }: { veh: Vehicle; password: string }) 
     conducteur: veh.conducteur,
     genre_conducteur: (veh.genre_conducteur ?? "femme") as Gender,
     telephone: veh.telephone ?? "",
+    email_conducteur: veh.email_conducteur ?? "",
     type_trajet: (veh.type_trajet ?? "trajet") as TransportType,
     ville_depart: veh.ville_depart ?? "",
     lieu_depart: veh.lieu_depart ?? "",
@@ -507,6 +572,9 @@ function VehicleAdminRow({ veh, password }: { veh: Vehicle; password: string }) 
           </Field>
           <Field title="Téléphone">
             <input className={field} value={form.telephone} onChange={(e) => set("telephone", e.target.value)} />
+          </Field>
+          <Field title="Email">
+            <input className={field} type="email" value={form.email_conducteur} onChange={(e) => set("email_conducteur", e.target.value)} />
           </Field>
           <Field title="Type">
             <select className={field} value={form.type_trajet} onChange={(e) => set("type_trajet", e.target.value as TransportType)}>
