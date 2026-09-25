@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { CalendarDays, Car, Clock3, ExternalLink, MapPin, Phone, Plus, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import { reserveVehicle, saveVehicle, useVehicles } from "@/lib/data"
-import { OUTBOUND_DATES, RETURN_DATES, type Gender, type TransportType } from "@/lib/types"
+import { OUTBOUND_DATES, RETURN_DATES, type Gender, type TransportType, type Vehicle } from "@/lib/types"
 
 const field = "w-full rounded-xl border border-[#6D1925]/15 bg-white/75 px-3 py-2.5 text-sm text-[#34171C] outline-none transition focus:border-[#6D1925]/45 focus:ring-2 focus:ring-[#6D1925]/10"
 const label = "mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6D1925]/70"
