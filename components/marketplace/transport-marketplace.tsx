@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react"
 import { CalendarDays, Car, Clock3, ExternalLink, MapPin, MessageCircle, Plus, Search, X } from "lucide-react"
 import { toast } from "sonner"
-import { reserveVehicle, saveVehicle, useVehicles } from "@/lib/data"
+import { reserveVehicle, saveVehicle, useVehicles, useOfferPeople } from "@/lib/data"
 import { OUTBOUND_DATES, RETURN_DATES, type Gender, type TransportType, type Vehicle } from "@/lib/types"
+import { InterestChoices, PeopleList } from "@/components/marketplace/people-and-interests"
 import { CityPicker, isListedCity, normalizeCity } from "@/components/marketplace/city-picker"
 
 const adultChoices = [1, 2, 3, 4, 5, 6, 7]
@@ -26,6 +27,7 @@ function genderEmoji(gender: Gender | null) {
 
 export function TransportMarketplace() {
   const { data: vehicles = [], isLoading } = useVehicles()
+  const { data: offerPeople = [] } = useOfferPeople()
   const [showForm, setShowForm] = useState(false)
   const [offerSource, setOfferSource] = useState<"invite" | "admin">("invite")
   const [type, setType] = useState<"" | "church" | "venue" | "navette">("")
@@ -151,7 +153,7 @@ export function TransportMarketplace() {
         <div id="transport-offers" className="grid scroll-mt-20 gap-4 lg:grid-cols-2">
           {filtered.map((veh) => {
             const places = veh.places_disponibles ?? veh.places
-            const mapHref = veh.lieu_depart ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(veh.lieu_depart) : undefined
+            const mapHref = veh.ville_depart ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(veh.ville_depart) : undefined
             return (
               <article key={veh.id} className="overflow-hidden rounded-2xl border border-[#6D1925]/10 bg-white shadow-[0_8px_30px_rgba(109,25,37,0.06)]">
                 <div className="border-b border-[#6D1925]/8 bg-[#FFF7E9]/55 p-5">
@@ -178,15 +180,14 @@ export function TransportMarketplace() {
                     <Info icon={<Clock3 className="h-4 w-4" />} text={veh.heure_depart ? "Départ " + veh.heure_depart : "Heure à confirmer"} />
                   </div>
 
-                  {(veh.ville_depart || veh.lieu_depart) && (
+                  {veh.ville_depart && (
                     <a href={mapHref} target="_blank" rel="noreferrer" className="flex items-start gap-2 rounded-xl bg-[#FFF7E9]/60 p-3 text-sm text-[#5B4549] transition hover:bg-[#FFF7E9]">
                       <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#6D1925]" />
                       <span className="min-w-0 flex-1">
                         <strong>{veh.ville_depart || "Départ"}</strong>
-                        {veh.lieu_depart && <><br />{veh.lieu_depart}</>}
                         {veh.destination && <><br /><span className="text-xs">→ {veh.destination}</span></>}
                       </span>
-                      {veh.lieu_depart && <ExternalLink className="h-4 w-4 shrink-0" />}
+                      {veh.ville_depart && <ExternalLink className="h-4 w-4 shrink-0" />}
                     </a>
                   )}
 
@@ -218,6 +219,7 @@ export function TransportMarketplace() {
                         : "Confirmer ma place"}
                   </button>
 
+                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3"><summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary><div className="mt-3"><PeopleList people={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id)?.people ?? [{ name: veh.conducteur.split(" ")[0], origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]} /><p className="mt-3 text-xs text-[#6D1925]/65">Téléphone, email et adresse précise disponibles après confirmation de la place.</p></div></details>
                   {veh.commentaires && <p className="rounded-xl bg-[#6D1925]/[0.035] p-3 text-xs leading-5 text-[#5B4549]">{veh.commentaires}</p>}
                 </div>
               </article>
@@ -279,6 +281,8 @@ function TransportForm({
     participation: 0,
     animaux_acceptes: false,
     commentaires: "",
+    compagnons_prenoms: "",
+    centres_interet: [] as string[],
   })
 
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }))
@@ -346,6 +350,8 @@ function TransportForm({
           <Field title="Email *"><input className={field} type="email" value={form.email_conducteur} onChange={(e) => set("email_conducteur", e.target.value)} /></Field>
         </div>
 
+        <Field title="Prénoms des adultes qui voyagent avec vous (avec leur accord, séparés par des virgules)"><input className={field} maxLength={220} placeholder="Ex. Kanto, Mahery" value={form.compagnons_prenoms} onChange={(e) => set("compagnons_prenoms", e.target.value)} /></Field>
+        <InterestChoices value={form.centres_interet} onChange={(values) => set("centres_interet", values)} />
         <p className="text-sm font-medium text-[#6D1925]">🚗 Trajet d’Île-de-France vers le mariage</p>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -417,7 +423,7 @@ function TransportReservationDialog({
   onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
-  const [confirmation, setConfirmation] = useState<{ emailSent: boolean; cancellationUrl: string; whatsappUrl: string | null; providerContact: { name: string | null; phone: string | null; email: string | null; address: string | null } | null } | null>(null)
+  const [confirmation, setConfirmation] = useState<{ emailSent: boolean; cancellationUrl: string; whatsappUrl: string | null; providerContact: { name: string | null; phone: string | null; email: string | null; address: string | null; members: { name: string; email: string }[] } | null } | null>(null)
   const [form, setForm] = useState({
     nom: "",
     email: "",
@@ -425,6 +431,9 @@ function TransportReservationDialog({
     genre: "femme" as Gender,
     nbPersonnes: Math.min(Math.max(1, initialPeople), Math.max(1, veh.places_disponibles)),
     consentement: false,
+    origin: "",
+    companions: "",
+    interests: [] as string[],
   })
 
   const total = veh.gratuit
@@ -435,6 +444,10 @@ function TransportReservationDialog({
     e.preventDefault()
     if (!form.nom.trim() || !form.email.trim() || !form.telephone.trim()) {
       toast.error("Merci de renseigner votre nom, email et téléphone.")
+      return
+    }
+    if (form.companions.split(",").map((name) => name.trim()).filter(Boolean).length !== form.nbPersonnes - 1) {
+      toast.error("Indiquez le prénom de chaque adulte pour lequel vous confirmez une place.")
       return
     }
     if (!form.consentement) {
@@ -451,6 +464,7 @@ function TransportReservationDialog({
         telephone: form.telephone,
         genre: form.genre,
         nbPersonnes: form.nbPersonnes,
+        profile: { origin: form.origin, companions: form.companions.split(",").map((v) => v.trim()).filter(Boolean), interests: form.interests },
         consentement: form.consentement,
       })
       if (result.emailSent) {
@@ -500,12 +514,16 @@ function TransportReservationDialog({
           <div className="mt-5 grid gap-4 rounded-2xl border border-[#6D1925]/10 bg-white/75 p-5">
             <h3 className="font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée</h3>
             <p className="text-sm text-[#5B4549]">{confirmation.emailSent ? "Votre place est décomptée. Vous pouvez contacter la personne ci-dessous." : "Votre place est décomptée. Vous pouvez contacter la personne ci-dessous ; la notification par email a échoué."}</p>
-            {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]"><p className="font-semibold">Contact : {confirmation.providerContact.name}</p>{confirmation.providerContact.phone && <a className="block underline" href={`tel:${confirmation.providerContact.phone}`}>{confirmation.providerContact.phone}</a>}{confirmation.providerContact.email && <a className="block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}{confirmation.providerContact.address && <p>{confirmation.providerContact.address}</p>}</div>}
+            {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]"><p className="font-semibold">Contact : {confirmation.providerContact.name}</p>{confirmation.providerContact.phone && <a className="block underline" href={`tel:${confirmation.providerContact.phone}`}>{confirmation.providerContact.phone}</a>}{confirmation.providerContact.email && <a className="block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}{confirmation.providerContact.address && <a className="block underline" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(confirmation.providerContact.address)}`}>📍 Voir le lieu de prise en charge sur Google Maps : {confirmation.providerContact.address}</a>}{confirmation.providerContact.members?.length > 0 && <div className="mt-3 border-t border-[#6D1925]/10 pt-3"><p className="font-semibold">Autres participants confirmés</p>{confirmation.providerContact.members.map((member, i) => <p key={`${member.email}-${i}`}>{member.name} · <a className="underline" href={`mailto:${member.email}`}>{member.email}</a></p>)}</div>}</div>}
             <a href={confirmation.cancellationUrl} className="text-sm font-semibold underline text-[#6D1925]">Conserver mon lien pour annuler cette place si besoin</a>
             {confirmation.whatsappUrl && <a href={confirmation.whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-[#10351d]"><MessageCircle className="h-5 w-5" /> Rejoindre le groupe WhatsApp</a>}
             <button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-[#6D1925]/20 px-4 text-sm font-semibold text-[#6D1925]">Fermer</button>
           </div>
         ) : <form onSubmit={submit} className="mt-5 grid gap-4">
+          <p className="text-sm text-[#5B4549]">Vos prénom et nom sont nécessaires pour confirmer la place. Seuls vos prénoms et centres d’intérêt seront visibles par les autres invités ; vos coordonnées restent privées.</p>
+          <Field title="Ville d’où vous venez (facultatif)"><input className={field} maxLength={80} value={form.origin} onChange={(e) => setForm((s) => ({ ...s, origin: e.target.value }))} /></Field>
+          <Field title="Prénoms des autres adultes avec vous (séparés par des virgules)"><input className={field} maxLength={220} value={form.companions} onChange={(e) => setForm((s) => ({ ...s, companions: e.target.value }))} /></Field>
+          <InterestChoices value={form.interests} onChange={(interests) => setForm((s) => ({ ...s, interests }))} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field title="Prénom / nom *">
               <input className={field} value={form.nom} onChange={(e) => setForm((s) => ({ ...s, nom: e.target.value }))} />
@@ -555,7 +573,7 @@ function TransportReservationDialog({
               onChange={(e) => setForm((s) => ({ ...s, consentement: e.target.checked }))}
             />
             <span>
-              J’accepte que mes coordonnées (nom, email et téléphone) soient transmises au conducteur, et de recevoir ses coordonnées par email afin d’organiser le trajet.
+              J’accepte que mes coordonnées (nom, email et téléphone) soient transmises au conducteur. Mon prénom, ma ville et mes goûts seront visibles sur la fiche. Les autres participants confirmés pourront voir mon email. Je recevrai les coordonnées du contact après confirmation.
             </span>
           </label>
 

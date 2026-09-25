@@ -15,7 +15,8 @@ import {
   X,
 } from "lucide-react"
 import { toast } from "sonner"
-import { reserveAccommodation, saveAccommodation, useAccommodations } from "@/lib/data"
+import { reserveAccommodation, saveAccommodation, useAccommodations, useOfferPeople } from "@/lib/data"
+import { InterestChoices, PeopleList } from "@/components/marketplace/people-and-interests"
 import { CityPicker, isListedCity, normalizeCity } from "@/components/marketplace/city-picker"
 
 const adultChoices = [1, 2, 3, 4, 5, 6, 7]
@@ -52,6 +53,7 @@ function genderEmoji(gender: Gender | null) {
 
 export function AccommodationMarketplace() {
   const { data: accommodations = [], isLoading } = useAccommodations()
+  const { data: offerPeople = [] } = useOfferPeople()
   const [showForm, setShowForm] = useState(false)
   const [offerSource, setOfferSource] = useState<"invite" | "admin">("invite")
   const [arrival, setArrival] = useState("")
@@ -244,6 +246,7 @@ export function AccommodationMarketplace() {
                         : "Confirmer ma place"}
                   </button>
 
+                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3"><summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary><div className="mt-3"><PeopleList people={offerPeople.find((group) => group.type === "accommodation" && group.id === acc.id)?.people ?? [{ name: (acc.propose_par ?? "Hôte").split(" ")[0], origin: acc.ville_logement, interests: acc.centres_interet ?? [] }]} /><p className="mt-3 text-xs text-[#6D1925]/65">Téléphone, email et adresse précise disponibles après confirmation de la place.</p></div></details>
                   {acc.commentaires && (
                     <p className="rounded-xl bg-[#6D1925]/[0.035] p-3 text-xs leading-5 text-[#5B4549]">
                       {acc.commentaires}
@@ -318,6 +321,8 @@ function AccommodationForm({
     enfants_acceptes: true,
     animaux_acceptes: false,
     commentaires: "",
+    compagnons_prenoms: "",
+    centres_interet: [] as string[],
   })
 
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
@@ -403,6 +408,9 @@ function AccommodationForm({
             </select>
           </Field>
         </div>
+
+        <Field title="Prénoms des adultes qui partagent ce logement (avec leur accord, séparés par des virgules)"><input className={field} maxLength={220} placeholder="Ex. Kanto, Mahery" value={form.compagnons_prenoms} onChange={(e) => set("compagnons_prenoms", e.target.value)} /></Field>
+        <InterestChoices value={form.centres_interet} onChange={(values) => set("centres_interet", values)} />
 
         <Field title="Adresse exacte *">
           <input className={field} placeholder="Rue, ville, code postal" value={form.adresse} onChange={(e) => set("adresse", e.target.value)} />
@@ -494,7 +502,7 @@ function AccommodationReservationDialog({
   onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
-  const [confirmation, setConfirmation] = useState<{ emailSent: boolean; cancellationUrl: string; whatsappUrl: string | null; providerContact: { name: string | null; phone: string | null; email: string | null; address: string | null } | null } | null>(null)
+  const [confirmation, setConfirmation] = useState<{ emailSent: boolean; cancellationUrl: string; whatsappUrl: string | null; providerContact: { name: string | null; phone: string | null; email: string | null; address: string | null; members: { name: string; email: string }[] } | null } | null>(null)
   const [form, setForm] = useState({
     nom: "",
     email: "",
@@ -504,6 +512,9 @@ function AccommodationReservationDialog({
     dateEntree: initialArrival,
     dateSortie: initialDeparture,
     consentement: false,
+    origin: "",
+    companions: "",
+    interests: [] as string[],
   })
 
   const nights =
@@ -517,6 +528,10 @@ function AccommodationReservationDialog({
     e.preventDefault()
     if (!form.nom.trim() || !form.email.trim() || !form.telephone.trim()) {
       toast.error("Merci de renseigner votre nom, email et téléphone.")
+      return
+    }
+    if (form.companions.split(",").map((name) => name.trim()).filter(Boolean).length !== form.nbPersonnes - 1) {
+      toast.error("Indiquez le prénom de chaque adulte pour lequel vous confirmez une place.")
       return
     }
     if (!form.consentement) {
@@ -537,6 +552,7 @@ function AccommodationReservationDialog({
         telephone: form.telephone,
         genre: form.genre,
         nbPersonnes: form.nbPersonnes,
+        profile: { origin: form.origin, companions: form.companions.split(",").map((v) => v.trim()).filter(Boolean), interests: form.interests },
         dateEntree: form.dateEntree,
         dateSortie: form.dateSortie,
         consentement: form.consentement,
@@ -578,12 +594,16 @@ function AccommodationReservationDialog({
           <div className="mt-5 grid gap-4 rounded-2xl border border-[#6D1925]/10 bg-white/75 p-5">
             <h3 className="font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée</h3>
             <p className="text-sm text-[#5B4549]">{confirmation.emailSent ? "Votre place est décomptée. Vous pouvez contacter la personne ci-dessous." : "Votre place est décomptée. Vous pouvez contacter la personne ci-dessous ; la notification par email a échoué."}</p>
-            {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]"><p className="font-semibold">Contact : {confirmation.providerContact.name}</p>{confirmation.providerContact.phone && <a className="block underline" href={`tel:${confirmation.providerContact.phone}`}>{confirmation.providerContact.phone}</a>}{confirmation.providerContact.email && <a className="block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}{confirmation.providerContact.address && <p>{confirmation.providerContact.address}</p>}</div>}
+            {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]"><p className="font-semibold">Contact : {confirmation.providerContact.name}</p>{confirmation.providerContact.phone && <a className="block underline" href={`tel:${confirmation.providerContact.phone}`}>{confirmation.providerContact.phone}</a>}{confirmation.providerContact.email && <a className="block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}{confirmation.providerContact.address && <a className="block underline" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(confirmation.providerContact.address)}`}>📍 Voir le lieu de prise en charge sur Google Maps : {confirmation.providerContact.address}</a>}{confirmation.providerContact.members?.length > 0 && <div className="mt-3 border-t border-[#6D1925]/10 pt-3"><p className="font-semibold">Autres participants confirmés</p>{confirmation.providerContact.members.map((member, i) => <p key={`${member.email}-${i}`}>{member.name} · <a className="underline" href={`mailto:${member.email}`}>{member.email}</a></p>)}</div>}</div>}
             <a href={confirmation.cancellationUrl} className="text-sm font-semibold underline text-[#6D1925]">Conserver mon lien pour annuler cette place si besoin</a>
             {confirmation.whatsappUrl && <a href={confirmation.whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-[#10351d]"><MessageCircle className="h-5 w-5" /> Rejoindre le groupe WhatsApp</a>}
             <button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-[#6D1925]/20 px-4 text-sm font-semibold text-[#6D1925]">Fermer</button>
           </div>
         ) : <form onSubmit={submit} className="mt-5 grid gap-4">
+          <p className="text-sm text-[#5B4549]">Vos prénom et nom sont nécessaires pour confirmer la place. Seuls vos prénoms et centres d’intérêt seront visibles par les autres invités ; vos coordonnées restent privées.</p>
+          <Field title="Ville d’où vous venez (facultatif)"><input className={field} maxLength={80} value={form.origin} onChange={(e) => setForm((s) => ({ ...s, origin: e.target.value }))} /></Field>
+          <Field title="Prénoms des autres adultes avec vous (séparés par des virgules)"><input className={field} maxLength={220} value={form.companions} onChange={(e) => setForm((s) => ({ ...s, companions: e.target.value }))} /></Field>
+          <InterestChoices value={form.interests} onChange={(interests) => setForm((s) => ({ ...s, interests }))} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field title="Prénom / nom *">
               <input className={field} value={form.nom} onChange={(e) => setForm((s) => ({ ...s, nom: e.target.value }))} />
@@ -647,7 +667,7 @@ function AccommodationReservationDialog({
               onChange={(e) => setForm((s) => ({ ...s, consentement: e.target.checked }))}
             />
             <span>
-              J’accepte que mes coordonnées (nom, email et téléphone) soient transmises à la personne qui propose ce logement, et de recevoir ses coordonnées par email afin d’organiser la réservation.
+              J’accepte que mes coordonnées (nom, email et téléphone) soient transmises à la personne qui propose le logement. Mon prénom, ma ville et mes goûts seront visibles sur la fiche. Les autres participants confirmés pourront voir mon email. Je recevrai les coordonnées du contact après confirmation.
             </span>
           </label>
 

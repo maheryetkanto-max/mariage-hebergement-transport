@@ -32,7 +32,7 @@ async function fetchGuests(): Promise<Guest[]> {
 async function fetchAccommodations(): Promise<Accommodation[]> {
   const { data, error } = await supabase
     .from("accommodations")
-    .select("id,nom,type,ville_logement,capacite,commentaires,propose_par,genre_proposant,places_disponibles,minutes_salle,date_entree,date_sortie,prix_personne_nuit,enfants_acceptes,animaux_acceptes,actif,source,reservation_active,created_at")
+    .select("id,nom,type,ville_logement,capacite,commentaires,propose_par,genre_proposant,compagnons_prenoms,centres_interet,places_disponibles,minutes_salle,date_entree,date_sortie,prix_personne_nuit,enfants_acceptes,animaux_acceptes,actif,source,reservation_active,created_at")
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as Accommodation[]
@@ -41,7 +41,7 @@ async function fetchAccommodations(): Promise<Accommodation[]> {
 async function fetchVehicles(): Promise<Vehicle[]> {
   const { data, error } = await supabase
     .from("vehicles")
-    .select("id,conducteur,heure_depart,places,commentaires,genre_conducteur,type_trajet,ville_depart,destination,date_depart,date_retour,heure_retour,retour_lieu_depart,retour_ville_arrivee,places_disponibles,gratuit,participation,animaux_acceptes,actif,source,reservation_active,created_at")
+    .select("id,conducteur,compagnons_prenoms,centres_interet,heure_depart,places,commentaires,genre_conducteur,type_trajet,ville_depart,destination,date_depart,date_retour,heure_retour,retour_lieu_depart,retour_ville_arrivee,places_disponibles,gratuit,participation,animaux_acceptes,actif,source,reservation_active,created_at")
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as Vehicle[]
@@ -59,10 +59,21 @@ export function useVehicles() {
   return useSWR<Vehicle[]>(KEYS.vehicles, fetchVehicles)
 }
 
+export interface PublicOfferPeople { type: "vehicle" | "accommodation"; id: string; people: { name: string; origin: string | null; interests: string[] }[] }
+
+export function useOfferPeople() {
+  return useSWR<PublicOfferPeople[]>("offer-people", async () => {
+    const { data, error } = await supabase.rpc("public_offer_people")
+    if (error) throw error
+    return (data ?? []) as PublicOfferPeople[]
+  })
+}
+
 export function revalidateAll() {
   globalMutate(KEYS.guests)
   globalMutate(KEYS.accommodations)
   globalMutate(KEYS.vehicles)
+  globalMutate("offer-people")
 }
 
 export function accommodationOccupancy(acc: Accommodation, guests: Guest[]): Occupancy {
@@ -159,6 +170,8 @@ export async function saveAccommodation(acc: Partial<Accommodation> & { id?: str
     genre_proposant: acc.genre_proposant || null,
     telephone_proposant: acc.telephone_proposant || null,
     email_proposant: acc.email_proposant || null,
+    compagnons_prenoms: acc.compagnons_prenoms || null,
+    centres_interet: acc.centres_interet || [],
     whatsapp_group_url: acc.whatsapp_group_url || null,
     places_disponibles: acc.places_disponibles ?? acc.capacite ?? 0,
     minutes_salle: acc.minutes_salle ?? null,
@@ -178,6 +191,7 @@ export async function saveAccommodation(acc: Partial<Accommodation> & { id?: str
     if (error) throw error
   }
   globalMutate(KEYS.accommodations)
+  globalMutate("offer-people")
 }
 
 export async function deleteAccommodation(id: string) {
@@ -193,6 +207,8 @@ export async function saveVehicle(vehicle: Partial<Vehicle> & { id?: string }) {
     conducteur: vehicle.conducteur,
     telephone: vehicle.telephone || null,
     email_conducteur: vehicle.email_conducteur || null,
+    compagnons_prenoms: vehicle.compagnons_prenoms || null,
+    centres_interet: vehicle.centres_interet || [],
     whatsapp_group_url: vehicle.whatsapp_group_url || null,
     lieu_depart: vehicle.lieu_depart || null,
     heure_depart: vehicle.heure_depart || null,
@@ -222,6 +238,7 @@ export async function saveVehicle(vehicle: Partial<Vehicle> & { id?: string }) {
     if (error) throw error
   }
   globalMutate(KEYS.vehicles)
+  globalMutate("offer-people")
 }
 
 export async function deleteVehicle(id: string) {
@@ -262,15 +279,16 @@ async function reservationProviderContact(reservationId: string, emailToken: str
     p_email_token: emailToken,
   })
   if (error) throw error
-  return data as { name: string | null; phone: string | null; email: string | null; address: string | null } | null
+  return data as { name: string | null; phone: string | null; email: string | null; address: string | null; members: { name: string; email: string }[] } | null
 }
 
 export async function reserveAccommodation(input: ReservationContact & {
   accommodationId: string
   dateEntree: string
   dateSortie: string
+  profile: { origin: string; interests: string[]; companions: string[] }
 }) {
-  const { data, error } = await supabase.rpc("reserve_accommodation", {
+  const { data, error } = await supabase.rpc("reserve_accommodation_with_profile", {
     p_accommodation_id: input.accommodationId,
     p_reserver_nom: input.nom,
     p_reserver_email: input.email,
@@ -280,6 +298,7 @@ export async function reserveAccommodation(input: ReservationContact & {
     p_date_entree: input.dateEntree,
     p_date_sortie: input.dateSortie,
     p_consentement_coordonnees: input.consentement,
+    p_profile: input.profile,
   })
   if (error) throw error
 
@@ -288,6 +307,7 @@ export async function reserveAccommodation(input: ReservationContact & {
   const emailToken = String(payload?.email_token ?? "")
   if (!reservationId || !emailToken) throw new Error("invalid_reservation_response")
   globalMutate(KEYS.accommodations)
+  globalMutate("offer-people")
 
   let emailSent = true
   try {
@@ -304,8 +324,9 @@ export async function reserveAccommodation(input: ReservationContact & {
 
 export async function reserveVehicle(input: ReservationContact & {
   vehicleId: string
+  profile: { origin: string; interests: string[]; companions: string[] }
 }) {
-  const { data, error } = await supabase.rpc("reserve_vehicle", {
+  const { data, error } = await supabase.rpc("reserve_vehicle_with_profile", {
     p_vehicle_id: input.vehicleId,
     p_reserver_nom: input.nom,
     p_reserver_email: input.email,
@@ -313,6 +334,7 @@ export async function reserveVehicle(input: ReservationContact & {
     p_reserver_genre: input.genre,
     p_nb_personnes: input.nbPersonnes,
     p_consentement_coordonnees: input.consentement,
+    p_profile: input.profile,
   })
   if (error) throw error
 
@@ -321,6 +343,7 @@ export async function reserveVehicle(input: ReservationContact & {
   const emailToken = String(payload?.email_token ?? "")
   if (!reservationId || !emailToken) throw new Error("invalid_reservation_response")
   globalMutate(KEYS.vehicles)
+  globalMutate("offer-people")
 
   let emailSent = true
   try {
