@@ -235,9 +235,9 @@ type ReservationContact = {
   consentement: boolean
 }
 
-async function sendReservationEmails(reservationId: string) {
+async function sendReservationEmails(reservationId: string, emailToken: string) {
   const { error } = await supabase.functions.invoke("send-reservation-emails", {
-    body: { reservation_id: reservationId },
+    body: { reservation_id: reservationId, email_token: emailToken },
   })
   if (error) throw error
 }
@@ -260,12 +260,15 @@ export async function reserveAccommodation(input: ReservationContact & {
   })
   if (error) throw error
 
-  const reservationId = String(data)
+  const payload = data as { reservation_id?: string; email_token?: string } | null
+  const reservationId = String(payload?.reservation_id ?? "")
+  const emailToken = String(payload?.email_token ?? "")
+  if (!reservationId || !emailToken) throw new Error("invalid_reservation_response")
   globalMutate(KEYS.accommodations)
 
   let emailSent = true
   try {
-    await sendReservationEmails(reservationId)
+    await sendReservationEmails(reservationId, emailToken)
   } catch (error) {
     console.error("Reservation email error", error)
     emailSent = false
@@ -288,12 +291,15 @@ export async function reserveVehicle(input: ReservationContact & {
   })
   if (error) throw error
 
-  const reservationId = String(data)
+  const payload = data as { reservation_id?: string; email_token?: string } | null
+  const reservationId = String(payload?.reservation_id ?? "")
+  const emailToken = String(payload?.email_token ?? "")
+  if (!reservationId || !emailToken) throw new Error("invalid_reservation_response")
   globalMutate(KEYS.vehicles)
 
   let emailSent = true
   try {
-    await sendReservationEmails(reservationId)
+    await sendReservationEmails(reservationId, emailToken)
   } catch (error) {
     console.error("Reservation email error", error)
     emailSent = false
