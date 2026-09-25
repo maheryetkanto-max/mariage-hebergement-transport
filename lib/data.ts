@@ -215,3 +215,52 @@ export async function deleteVehicle(id: string) {
   globalMutate(KEYS.vehicles)
   globalMutate(KEYS.guests)
 }
+
+
+export async function verifyWeddingAdmin(password: string) {
+  const { data, error } = await supabase.rpc("verify_wedding_admin", { p_password: password })
+  if (error) throw error
+  return Boolean(data)
+}
+
+export async function adminPatchAccommodation(password: string, id: string, payload: Record<string, unknown>) {
+  const { data, error } = await supabase.rpc("admin_patch_accommodation", {
+    p_password: password,
+    p_id: id,
+    p_payload: payload,
+  })
+  if (error) throw error
+  globalMutate(KEYS.accommodations)
+  return Boolean(data)
+}
+
+export async function adminDeleteAccommodation(password: string, id: string) {
+  const { data, error } = await supabase.rpc("admin_delete_accommodation", {
+    p_password: password,
+    p_id: id,
+  })
+  if (error) throw error
+  globalMutate(KEYS.accommodations)
+  return Boolean(data)
+}
+
+export async function adminPatchVehicle(password: string, id: string, payload: Record<string, unknown>) {
+  const { data, error } = await supabase.rpc("admin_patch_vehicle", {
+    p_password: password,
+    p_id: id,
+    p_payload: payload,
+  })
+  if (error) throw error
+  globalMutate(KEYS.vehicles)
+  return Boolean(data)
+}
+
+export async function adminDeleteVehicle(password: string, id: string) {
+  const { data, error } = await supabase.rpc("admin_delete_vehicle", {
+    p_password: password,
+    p_id: id,
+  })
+  if (error) throw error
+  globalMutate(KEYS.vehicles)
+  return Boolean(data)
+}
