@@ -2,118 +2,62 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
-import { BedDouble, Car, LayoutDashboard, Menu, Users, X } from "lucide-react"
+import { BedDouble, Car, Home } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 
 const NAV = [
-  { href: "/", label: "Tableau de bord", icon: LayoutDashboard },
-  { href: "/invites", label: "Invités", icon: Users },
-  { href: "/hebergements", label: "Hébergements", icon: BedDouble },
-  { href: "/transports", label: "Transports", icon: Car },
+  { href: "/", label: "Accueil", icon: Home },
+  { href: "/hebergements", label: "Hébergement", icon: BedDouble },
+  { href: "/transports", label: "Transport", icon: Car },
 ]
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname()
-  return (
-    <nav className="flex flex-col gap-1 px-3">
-      {NAV.map((item) => {
-        const active = pathname === item.href
-        const Icon = item.icon
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-              active
-                ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            )}
-          >
-            <Icon className="h-[18px] w-[18px] shrink-0" />
-            {item.label}
-          </Link>
-        )
-      })}
-    </nav>
-  )
-}
-
-function Brand() {
-  return (
-    <div className="px-5 py-6">
-      <p className="font-serif text-xs uppercase tracking-[0.25em] text-sidebar-foreground/60">
-        Mariage
-      </p>
-      <h1 className="font-serif text-2xl font-semibold leading-tight text-sidebar-foreground">
-        M <span className="text-sidebar-foreground/70">&</span> K
-      </h1>
-      <p className="mt-1 text-[11px] text-sidebar-foreground/60">Hébergement &amp; Transport</p>
-    </div>
-  )
-}
-
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
+  const pathname = usePathname()
+  const isLegacyAdmin = pathname.startsWith("/invites") || pathname.startsWith("/admin")
+
+  if (isLegacyAdmin) {
+    return (
+      <div className="min-h-screen bg-background">
+        <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col bg-sidebar lg:flex">
-        <Brand />
-        <NavLinks />
-      </aside>
-
-      {/* Mobile drawer */}
-      {open && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setOpen(false)}
-            aria-hidden
-          />
-          <aside className="absolute left-0 top-0 flex h-full w-64 flex-col bg-sidebar shadow-xl">
-            <div className="flex items-center justify-between pr-3">
-              <Brand />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setOpen(false)}
-                className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                aria-label="Fermer le menu"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-            <NavLinks onNavigate={() => setOpen(false)} />
-          </aside>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-40 border-b border-[#6D1925]/10 bg-[#FFF7E9]/95 backdrop-blur">
+        <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link href="/" className="shrink-0">
+            <p className="font-serif text-xl font-semibold leading-none text-[#6D1925]">Mahery & Kanto</p>
+            <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-[#6D1925]/45">Hébergement & transport</p>
+          </Link>
+          <nav className="flex items-center gap-1">
+            {NAV.map((item) => {
+              const Icon = item.icon
+              const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium transition",
+                    active ? "bg-[#6D1925] text-[#FFF7E9]" : "text-[#6D1925] hover:bg-[#6D1925]/5",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{item.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
         </div>
-      )}
+      </header>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile top bar */}
-        <header className="flex items-center gap-3 border-b bg-sidebar px-4 py-3 lg:hidden">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setOpen(true)}
-            className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            aria-label="Ouvrir le menu"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <span className="font-serif text-lg font-semibold text-sidebar-foreground">
-            Mariage M &amp; K
-          </span>
-        </header>
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
 
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          {children}
-        </main>
-      </div>
+      <footer className="mt-10 border-t border-[#6D1925]/10 px-4 py-8 text-center text-xs text-[#6D1925]/45">
+        Mariage Mahery & Kanto · 31 décembre 2026
+      </footer>
     </div>
   )
 }
