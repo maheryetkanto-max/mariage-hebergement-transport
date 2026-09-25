@@ -217,7 +217,9 @@ export function AccommodationMarketplace() {
                     <div>
                       <p className="text-xs text-[#6D1925]/55">Prix par personne / nuit</p>
                       <p className="font-serif text-2xl font-semibold text-[#6D1925]">
-                        {Number(acc.prix_personne_nuit || 0).toFixed(0)} €
+                        {Number(acc.prix_personne_nuit || 0) === 0
+                          ? "Gratuit"
+                          : Number(acc.prix_personne_nuit || 0).toFixed(0) + " €"}
                       </p>
                       {total != null && (
                         <p className="text-xs font-semibold text-[#6D1925]">
@@ -225,13 +227,13 @@ export function AccommodationMarketplace() {
                         </p>
                       )}
                     </div>
-                    {(acc.telephone_proposant || acc.contact) && (
+                    {acc.telephone_proposant && (
                       <a
-                        href={acc.telephone_proposant ? `tel:${acc.telephone_proposant.replace(/\s/g, "")}` : undefined}
+                        href={`tel:${acc.telephone_proposant.replace(/\s/g, "")}`}
                         className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#6D1925]/20 px-3.5 py-2 text-sm font-semibold text-[#6D1925]"
                       >
                         <Phone className="h-4 w-4" />
-                        {acc.telephone_proposant || "Contact"}
+                        {acc.telephone_proposant}
                       </a>
                     )}
                   </div>
@@ -380,7 +382,7 @@ function AccommodationForm({
           <Field title="Minutes de la salle">
             <input className={field} type="number" min={0} value={form.minutes_salle} onChange={(e) => set("minutes_salle", Math.max(0, Number(e.target.value) || 0))} />
           </Field>
-          <Field title="Prix / pers. / nuit (€)">
+          <Field title="Prix / pers. / nuit (€) · 0 = gratuit">
             <input className={field} type="number" min={0} step="0.01" value={form.prix_personne_nuit} onChange={(e) => set("prix_personne_nuit", Math.max(0, Number(e.target.value) || 0))} />
           </Field>
         </div>
