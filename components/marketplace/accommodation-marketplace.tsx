@@ -242,13 +242,13 @@ export function AccommodationMarketplace() {
 
                   <button
                     type="button"
-                    disabled={places < 1 || !acc.email_proposant}
+                    disabled={places < 1 || !acc.reservation_active}
                     onClick={() => setBookingAcc(acc)}
                     className="min-h-11 w-full rounded-xl bg-[#6D1925] px-4 text-sm font-semibold text-[#FFF7E9] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {places < 1
                       ? "Complet"
-                      : !acc.email_proposant
+                      : !acc.reservation_active
                         ? "Réservation en ligne indisponible"
                         : "Réserver ce logement"}
                   </button>
