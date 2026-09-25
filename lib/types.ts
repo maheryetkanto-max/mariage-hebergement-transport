@@ -36,6 +36,7 @@ export interface Accommodation {
   genre_proposant: Gender | null
   telephone_proposant: string | null
   email_proposant?: string | null
+  whatsapp_group_url?: string | null
   reservation_active: boolean
   places_disponibles: number
   minutes_salle: number | null
@@ -54,6 +55,7 @@ export interface Vehicle {
   conducteur: string
   telephone: string | null
   email_conducteur?: string | null
+  whatsapp_group_url?: string | null
   reservation_active: boolean
   lieu_depart: string | null
   heure_depart: string | null
