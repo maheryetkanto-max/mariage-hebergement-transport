@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { reserveVehicle, saveVehicle, useVehicles, useOfferPeople } from "@/lib/data"
 import { OUTBOUND_DATES, RETURN_DATES, type Gender, type TransportType, type Vehicle } from "@/lib/types"
 import { NamedPeople, personLabel, type NamedPerson } from "@/components/marketplace/named-people"
+import { OwnerFields, emptyOwnerNames, ownerFirstNames, ownerFullNames, ownerIsComplete } from "@/components/marketplace/owner-names"
 import { AddressPicker } from "@/components/marketplace/address-picker"
 import { FrenchPhone, isFrenchPhone } from "@/components/marketplace/french-phone"
 import { InterestChoices, PeopleList } from "@/components/marketplace/people-and-interests"
@@ -169,7 +170,7 @@ export function TransportMarketplace() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="font-serif text-2xl font-semibold text-[#6D1925]">{genderEmoji(veh.genre_conducteur)} {veh.conducteur}</h2>
+                        <h2 className="font-serif text-2xl font-semibold text-[#6D1925]">{genderEmoji(veh.genre_conducteur)} {ownerFirstNames(veh.conducteur, veh.genre_conducteur)}</h2>
                         <span className="rounded-full border border-[#6D1925]/15 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#6D1925]/70">{veh.type_trajet === "navette" ? "🚉 Navette locale" : "🚗 Covoiturage"}</span>
                       </div>
                       <p className="mt-1 text-sm text-[#5B4549]">
@@ -227,7 +228,7 @@ export function TransportMarketplace() {
                         : "Confirmer ma place"}
                   </button>
 
-                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3"><summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary><div className="mt-3"><PeopleList people={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id)?.people ?? [{ name: veh.conducteur.split(" ")[0], origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]} /><p className="mt-3 text-xs text-[#6D1925]/65">Téléphone, email et adresse précise disponibles après confirmation de la place.</p></div></details>
+                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3"><summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary><div className="mt-3"><PeopleList people={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id)?.people ?? [{ name: ownerFirstNames(veh.conducteur, veh.genre_conducteur), origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]} /><p className="mt-3 text-xs text-[#6D1925]/65">Téléphone, email et adresse précise disponibles après confirmation de la place.</p></div></details>
                   {veh.commentaires && <p className="rounded-xl bg-[#6D1925]/[0.035] p-3 text-xs leading-5 text-[#5B4549]">{veh.commentaires}</p>}
                 </div>
               </article>
@@ -268,6 +269,7 @@ function TransportForm({
 }) {
   const [saving, setSaving] = useState(false)
   const [occupants, setOccupants] = useState<NamedPerson[]>([])
+  const [owners, setOwners] = useState(emptyOwnerNames)
   const [returnFromAccommodation, setReturnFromAccommodation] = useState(false)
   const [fromStation, setFromStation] = useState(false)
   const [form, setForm] = useState({
@@ -299,7 +301,7 @@ function TransportForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.conducteur.trim() || !isFrenchPhone(form.telephone) || !form.email_conducteur.trim() || !form.ville_depart.trim() || !form.lieu_depart.trim() || !form.heure_depart) {
+    if (!ownerIsComplete(form.genre_conducteur, owners) || !isFrenchPhone(form.telephone) || !form.email_conducteur.trim() || !form.ville_depart.trim() || !form.lieu_depart.trim() || !form.heure_depart) {
       toast.error("Merci de compléter le nom, le téléphone, l’email, la ville, le lieu et l’heure de départ.")
       return
     }
@@ -323,7 +325,7 @@ function TransportForm({
     setSaving(true)
     try {
       const groupToken = crypto.randomUUID()
-      const offerId = await saveVehicle({ ...form, compagnons_prenoms: occupants.map(personLabel).join(", "), group_manage_token: groupToken, retour_lieu_depart: form.date_retour ? form.retour_lieu_depart : "", retour_ville_arrivee: form.date_retour ? form.retour_ville_arrivee : "", places: form.places_disponibles, source, actif: true })
+      const offerId = await saveVehicle({ ...form, conducteur: ownerFullNames(form.genre_conducteur, owners), compagnons_prenoms: occupants.map(personLabel).join(", "), group_manage_token: groupToken, retour_lieu_depart: form.date_retour ? form.retour_lieu_depart : "", retour_ville_arrivee: form.date_retour ? form.retour_ville_arrivee : "", places: form.places_disponibles, source, actif: true })
       toast.success("Votre transport a bien été ajouté.")
       onPublished(`/groupe?type=vehicle&offre=${offerId}&gestion=${groupToken}`)
     } catch (error) {
@@ -347,20 +349,20 @@ function TransportForm({
 
       <form onSubmit={submit} className="grid gap-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field title="Nom du conducteur / des propriétaires *"><input className={field} value={form.conducteur} onChange={(e) => set("conducteur", e.target.value)} /></Field>
           <Field title="Propriétaire(s) du véhicule *">
             <select className={field} value={form.genre_conducteur} onChange={(e) => set("genre_conducteur", e.target.value as Gender)}>
               <option value="femme">👩 Femme</option><option value="homme">👨 Homme</option>
               <option value="homme_et_femme">👫 Homme et femme</option>
             </select>
           </Field>
-          <Field title="Téléphone français *"><FrenchPhone className={field} value={form.telephone} onChange={(value) => set("telephone", value)} /></Field>
+          <Field title="Numéro de téléphone de contact *"><FrenchPhone className={field} value={form.telephone} onChange={(value) => set("telephone", value)} /></Field>
           <Field title="Email *"><input className={field} type="email" value={form.email_conducteur} onChange={(e) => set("email_conducteur", e.target.value)} /></Field>
         </div>
 
+        <OwnerFields gender={form.genre_conducteur} names={owners} onChange={setOwners} />
         <NamedPeople title="Adultes et enfants qui voyagent déjà avec vous (prénom et nom)" value={occupants} onChange={setOccupants} />
         <InterestChoices value={form.centres_interet} onChange={(values) => set("centres_interet", values)} />
-        <div><span className={label}>Type de départ *</span><select className={field} value={fromStation ? "station" : "idf"} onChange={(e) => { const station = e.target.value === "station"; setFromStation(station); set("ville_depart", ""); set("lieu_depart", ""); set("type_trajet", station ? "navette" : "trajet") }}><option value="idf">🚗 Depuis une ville d’Île-de-France</option><option value="station">🚉 Prise en charge à une gare autour de Troyes</option></select></div>
+        <div><span className={label}>Type de départ *</span><select className={field} value={fromStation ? "station" : "idf"} onChange={(e) => { const station = e.target.value === "station"; setFromStation(station); set("ville_depart", ""); set("lieu_depart", ""); set("type_trajet", station ? "navette" : "trajet") }}><option value="idf">🚗 Je veux te prendre dans une ville d’Île-de-France</option><option value="station">🚉 Je veux te prendre à une gare autour de Troyes</option></select></div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div><span className={label}>{fromStation ? "Gare de prise en charge *" : "Ville de départ (Île-de-France) *"}</span>{fromStation ? <select className={field} value={form.ville_depart} onChange={(e) => { set("ville_depart", e.target.value); set("lieu_depart", e.target.value ? `Gare de ${e.target.value}` : "") }}><option value="">Choisir une gare</option>{STATIONS.map((station) => <option key={station} value={station}>Gare de {station}</option>)}</select> : <CityPicker className={field} label="Ville de départ" area="idf" placeholder="Tapez une ville…" value={form.ville_depart} onChange={(value) => set("ville_depart", value)} />}</div>
