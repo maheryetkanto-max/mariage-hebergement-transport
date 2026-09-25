@@ -395,6 +395,7 @@ function AccommodationAdminRow({
     nom: acc.nom,
     type: acc.type,
     adresse: acc.adresse ?? "",
+    ville_logement: acc.ville_logement ?? "",
     propose_par: acc.propose_par ?? acc.contact ?? "",
     genre_proposant: (acc.genre_proposant ?? "femme") as Gender,
     telephone_proposant: acc.telephone_proposant ?? "",
@@ -483,6 +484,7 @@ function AccommodationAdminRow({
           <Field title="Adresse">
             <input className={field} value={form.adresse} onChange={(e) => set("adresse", e.target.value)} />
           </Field>
+          <Field title="Ville du logement"><input className={field} value={form.ville_logement} onChange={(e) => set("ville_logement", e.target.value)} /></Field>
           <Field title="Minutes de la salle">
             <input className={field} type="number" min={0} value={form.minutes_salle} onChange={(e) => set("minutes_salle", Math.max(0, Number(e.target.value) || 0))} />
           </Field>
@@ -546,6 +548,8 @@ function VehicleAdminRow({
     heure_depart: veh.heure_depart ?? "",
     date_retour: veh.date_retour ?? "",
     heure_retour: veh.heure_retour ?? "",
+    retour_lieu_depart: veh.retour_lieu_depart ?? "",
+    retour_ville_arrivee: veh.retour_ville_arrivee ?? "",
     places_disponibles: veh.places_disponibles ?? veh.places,
     gratuit: veh.gratuit,
     participation: Number(veh.participation || 0),
@@ -605,6 +609,7 @@ function VehicleAdminRow({
             <select className={field} value={form.genre_conducteur} onChange={(e) => set("genre_conducteur", e.target.value as Gender)}>
               <option value="femme">👩 Femme</option>
               <option value="homme">👨 Homme</option>
+              <option value="homme_et_femme">👫 Homme et femme</option>
             </select>
           </Field>
           <Field title="Téléphone">
@@ -645,6 +650,8 @@ function VehicleAdminRow({
           <Field title="Heure retour">
             <input className={field} type="time" value={form.heure_retour} onChange={(e) => set("heure_retour", e.target.value)} />
           </Field>
+          <Field title="Lieu de départ au retour"><input className={field} value={form.retour_lieu_depart} onChange={(e) => set("retour_lieu_depart", e.target.value)} /></Field>
+          <Field title="Ville de dépose au retour"><input className={field} value={form.retour_ville_arrivee} onChange={(e) => set("retour_ville_arrivee", e.target.value)} /></Field>
           <Field title="Places restantes">
             <input className={field} type="number" min={0} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Math.max(0, Number(e.target.value) || 0))} />
           </Field>

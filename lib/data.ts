@@ -32,7 +32,7 @@ async function fetchGuests(): Promise<Guest[]> {
 async function fetchAccommodations(): Promise<Accommodation[]> {
   const { data, error } = await supabase
     .from("accommodations")
-    .select("id,nom,type,adresse,capacite,contact,commentaires,propose_par,genre_proposant,telephone_proposant,places_disponibles,minutes_salle,date_entree,date_sortie,prix_personne_nuit,enfants_acceptes,animaux_acceptes,actif,source,reservation_active,created_at")
+    .select("id,nom,type,adresse,ville_logement,capacite,contact,commentaires,propose_par,genre_proposant,telephone_proposant,places_disponibles,minutes_salle,date_entree,date_sortie,prix_personne_nuit,enfants_acceptes,animaux_acceptes,actif,source,reservation_active,created_at")
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as Accommodation[]
@@ -41,7 +41,7 @@ async function fetchAccommodations(): Promise<Accommodation[]> {
 async function fetchVehicles(): Promise<Vehicle[]> {
   const { data, error } = await supabase
     .from("vehicles")
-    .select("id,conducteur,telephone,lieu_depart,heure_depart,places,commentaires,genre_conducteur,type_trajet,ville_depart,destination,date_depart,date_retour,heure_retour,places_disponibles,gratuit,participation,animaux_acceptes,actif,source,reservation_active,created_at")
+    .select("id,conducteur,telephone,lieu_depart,heure_depart,places,commentaires,genre_conducteur,type_trajet,ville_depart,destination,date_depart,date_retour,heure_retour,retour_lieu_depart,retour_ville_arrivee,places_disponibles,gratuit,participation,animaux_acceptes,actif,source,reservation_active,created_at")
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as Vehicle[]
@@ -151,6 +151,7 @@ export async function saveAccommodation(acc: Partial<Accommodation> & { id?: str
     nom: acc.nom,
     type: acc.type ?? "Autre",
     adresse: acc.adresse || null,
+    ville_logement: acc.ville_logement || null,
     capacite: acc.capacite ?? acc.places_disponibles ?? 0,
     contact: acc.contact || acc.propose_par || null,
     commentaires: acc.commentaires || null,
@@ -173,7 +174,7 @@ export async function saveAccommodation(acc: Partial<Accommodation> & { id?: str
     const { error } = await supabase.from("accommodations").update(payload).eq("id", acc.id)
     if (error) throw error
   } else {
-    const { error } = await supabase.from("accommodations").insert(payload)
+    const { error } = await supabase.from("accommodations").insert({ ...payload, reservation_active: Boolean(acc.email_proposant) })
     if (error) throw error
   }
   globalMutate(KEYS.accommodations)
@@ -204,6 +205,8 @@ export async function saveVehicle(vehicle: Partial<Vehicle> & { id?: string }) {
     date_depart: vehicle.date_depart || null,
     date_retour: vehicle.date_retour || null,
     heure_retour: vehicle.heure_retour || null,
+    retour_lieu_depart: vehicle.retour_lieu_depart || null,
+    retour_ville_arrivee: vehicle.retour_ville_arrivee || null,
     places_disponibles: vehicle.places_disponibles ?? vehicle.places ?? 0,
     gratuit,
     participation: gratuit ? 0 : (vehicle.participation ?? 0),
@@ -215,7 +218,7 @@ export async function saveVehicle(vehicle: Partial<Vehicle> & { id?: string }) {
     const { error } = await supabase.from("vehicles").update(payload).eq("id", vehicle.id)
     if (error) throw error
   } else {
-    const { error } = await supabase.from("vehicles").insert(payload)
+    const { error } = await supabase.from("vehicles").insert({ ...payload, reservation_active: Boolean(vehicle.email_conducteur) })
     if (error) throw error
   }
   globalMutate(KEYS.vehicles)

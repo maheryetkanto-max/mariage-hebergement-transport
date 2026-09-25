@@ -17,6 +17,9 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { reserveAccommodation, saveAccommodation, useAccommodations } from "@/lib/data"
+import { CityPicker, isListedCity, normalizeCity } from "@/components/marketplace/city-picker"
+
+const adultChoices = [1, 2, 3, 4, 5, 6, 7]
 import {
   ACCOMMODATION_TYPES,
   OUTBOUND_DATES,
@@ -55,6 +58,7 @@ export function AccommodationMarketplace() {
   const [arrival, setArrival] = useState("")
   const [departure, setDeparture] = useState("")
   const [people, setPeople] = useState(1)
+  const [city, setCity] = useState("")
   const [childrenOnly, setChildrenOnly] = useState(false)
   const [petsOnly, setPetsOnly] = useState(false)
   const [bookingAcc, setBookingAcc] = useState<Accommodation | null>(null)
@@ -65,16 +69,21 @@ export function AccommodationMarketplace() {
     if (params.get("source") === "admin") setOfferSource("admin")
   }, [])
 
+  useEffect(() => {
+    if (showForm) document.getElementById("proposer")?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, [showForm])
+
   const filtered = useMemo(
     () =>
       accommodations
         .filter((a) => a.actif !== false)
         .filter((a) => (a.places_disponibles ?? a.capacite) >= people)
+        .filter((a) => !city || normalizeCity((a.ville_logement ?? "") + " " + (a.adresse ?? "")).includes(normalizeCity(city)))
         .filter((a) => !childrenOnly || a.enfants_acceptes)
         .filter((a) => !petsOnly || a.animaux_acceptes)
         .filter((a) => !arrival || !a.date_entree || a.date_entree <= arrival)
         .filter((a) => !departure || !a.date_sortie || a.date_sortie >= departure),
-    [accommodations, arrival, departure, people, childrenOnly, petsOnly],
+    [accommodations, arrival, departure, people, city, childrenOnly, petsOnly],
   )
 
   const selectedNights =
@@ -111,7 +120,7 @@ export function AccommodationMarketplace() {
           <Search className="h-4 w-4" />
           Trouver ce qui me convient
         </div>
-        <div className="grid gap-3 md:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-6">
           <div>
             <span className={label}>Arrivée</span>
             <select className={field} value={arrival} onChange={(e) => setArrival(e.target.value)}>
@@ -131,14 +140,14 @@ export function AccommodationMarketplace() {
             </select>
           </div>
           <div>
-            <span className={label}>Places nécessaires</span>
-            <input
-              className={field}
-              type="number"
-              min={1}
-              value={people}
-              onChange={(e) => setPeople(Math.max(1, Number(e.target.value) || 1))}
-            />
+            <span className={label}>Ville du logement</span>
+            <CityPicker className={field} label="Chercher la ville du logement" area="idf-aube" placeholder="Troyes, Massy…" value={city} onChange={setCity} />
+          </div>
+          <div>
+            <span className={label}>Places adultes nécessaires</span>
+            <select className={field} value={people} onChange={(e) => setPeople(Number(e.target.value))}>
+              {adultChoices.map((count) => <option key={count} value={count}>{count} adulte{count > 1 ? "s" : ""}</option>)}
+            </select>
           </div>
           <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/60 px-3 py-2.5 text-sm">
             <input type="checkbox" checked={childrenOnly} onChange={(e) => setChildrenOnly(e.target.checked)} />
@@ -151,7 +160,7 @@ export function AccommodationMarketplace() {
         </div>
       </section>
 
-      {showForm && <AccommodationForm onClose={() => setShowForm(false)} source={offerSource} />}
+      {showForm && <AccommodationForm onClose={() => setShowForm(false)} onPublished={() => { setShowForm(false); setArrival(""); setDeparture(""); setCity(""); setPeople(1); setChildrenOnly(false); setPetsOnly(false); window.setTimeout(() => document.getElementById("accommodation-offers")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30) }} source={offerSource} />}
 
       {isLoading ? (
         <p className="py-10 text-center text-sm text-muted-foreground">Chargement des logements…</p>
@@ -160,9 +169,10 @@ export function AccommodationMarketplace() {
           <BedDouble className="mx-auto mb-3 h-9 w-9 text-[#6D1925]/35" />
           <p className="font-medium text-[#4B242B]">Aucun logement ne correspond à ces critères.</p>
           <p className="mt-1 text-sm text-[#6D1925]/55">Essayez d’élargir vos filtres.</p>
+          <button type="button" onClick={() => { setArrival(""); setDeparture(""); setCity(""); setPeople(1); setChildrenOnly(false); setPetsOnly(false) }} className="mt-4 min-h-11 rounded-xl border border-[#6D1925]/25 bg-white px-4 text-sm font-semibold text-[#6D1925]">Afficher tous les logements</button>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div id="accommodation-offers" className="grid scroll-mt-20 gap-4 lg:grid-cols-2">
           {filtered.map((acc) => {
             const places = acc.places_disponibles ?? acc.capacite
             const total = selectedNights > 0 ? selectedNights * Number(acc.prix_personne_nuit || 0) : null
@@ -196,6 +206,8 @@ export function AccommodationMarketplace() {
                     <Info icon={<CalendarDays className="h-4 w-4" />} text={`${dateLabel(acc.date_entree)} → ${dateLabel(acc.date_sortie)}`} />
                     <Info icon={<Clock3 className="h-4 w-4" />} text={acc.minutes_salle != null ? `${acc.minutes_salle} min de la salle` : "Distance non précisée"} />
                   </div>
+
+                  {acc.ville_logement && <p className="text-sm font-semibold text-[#6D1925]">📍 {acc.ville_logement}</p>}
 
                   {acc.adresse && (
                     <a
@@ -302,9 +314,11 @@ function Sticker({ children }: { children: React.ReactNode }) {
 
 function AccommodationForm({
   onClose,
+  onPublished,
   source,
 }: {
   onClose: () => void
+  onPublished: () => void
   source: "invite" | "admin"
 }) {
   const [saving, setSaving] = useState(false)
@@ -317,6 +331,7 @@ function AccommodationForm({
     nom: "",
     type: "Airbnb" as AccommodationType,
     adresse: "",
+    ville_logement: "",
     places_disponibles: 1,
     minutes_salle: 10,
     date_entree: "2026-12-30",
@@ -334,6 +349,10 @@ function AccommodationForm({
     e.preventDefault()
     if (!form.propose_par.trim() || !form.telephone_proposant.trim() || !form.email_proposant.trim() || !form.nom.trim() || !form.adresse.trim()) {
       toast.error("Merci de compléter le nom, le téléphone, l’email, le logement et l’adresse.")
+      return
+    }
+    if (!isListedCity(form.ville_logement, "idf-aube")) {
+      toast.error("Choisissez la ville du logement dans la liste (Aube ou Île-de-France).")
       return
     }
     if (form.date_sortie <= form.date_entree) {
@@ -355,7 +374,7 @@ function AccommodationForm({
         actif: true,
       })
       toast.success("Votre logement a bien été ajouté.")
-      onClose()
+      onPublished()
     } catch (error) {
       console.error(error)
       toast.error("Impossible d’ajouter le logement pour le moment.")
@@ -365,7 +384,7 @@ function AccommodationForm({
   }
 
   return (
-    <section id="proposer" className="rounded-3xl border border-[#6D1925]/15 bg-[#FFF7E9] p-5 shadow-lg sm:p-7">
+    <section id="proposer" className="scroll-mt-20 rounded-3xl border border-[#6D1925]/15 bg-[#FFF7E9] p-5 shadow-lg sm:p-7">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6D1925]/55">Partager une place</p>
@@ -411,8 +430,10 @@ function AccommodationForm({
           <input className={field} placeholder="Rue, ville, code postal" value={form.adresse} onChange={(e) => set("adresse", e.target.value)} />
         </Field>
 
+        <div><span className={label}>Ville du logement (Aube ou Île-de-France) *</span><CityPicker className={field} label="Ville du logement" area="idf-aube" placeholder="Tapez une ville…" value={form.ville_logement} onChange={(value) => set("ville_logement", value)} /></div>
+
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field title="Places encore disponibles *">
+          <Field title="Places adultes disponibles *">
             <input className={field} type="number" min={1} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Math.max(1, Number(e.target.value) || 1))} />
           </Field>
           <Field title="Minutes de la salle">
