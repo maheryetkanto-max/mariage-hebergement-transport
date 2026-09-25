@@ -59,7 +59,7 @@ export function useVehicles() {
   return useSWR<Vehicle[]>(KEYS.vehicles, fetchVehicles)
 }
 
-export interface PublicOfferPeople { type: "vehicle" | "accommodation"; id: string; people: { name: string; origin: string | null; interests: string[] }[] }
+export interface PublicOfferPeople { type: "vehicle" | "accommodation"; id: string; people: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[] }
 
 export function useOfferPeople() {
   return useSWR<PublicOfferPeople[]>("offer-people", async () => {
@@ -292,7 +292,7 @@ export async function reserveAccommodation(input: ReservationContact & {
   accommodationId: string
   dateEntree: string
   dateSortie: string
-  profile: { origin: string; interests: string[]; companions: string[] }
+  profile: { origin: string; interests: string[]; companions: string[]; luggage?: "petit" | "moyen" | "gros" }
 }) {
   const { data, error } = await supabase.rpc("reserve_accommodation_with_profile", {
     p_accommodation_id: input.accommodationId,
@@ -330,7 +330,7 @@ export async function reserveAccommodation(input: ReservationContact & {
 
 export async function reserveVehicle(input: ReservationContact & {
   vehicleId: string
-  profile: { origin: string; interests: string[]; companions: string[] }
+  profile: { origin: string; interests: string[]; companions: string[]; luggage?: "petit" | "moyen" | "gros" }
 }) {
   const { data, error } = await supabase.rpc("reserve_vehicle_with_profile", {
     p_vehicle_id: input.vehicleId,
