@@ -32,7 +32,7 @@ async function fetchGuests(): Promise<Guest[]> {
 async function fetchAccommodations(): Promise<Accommodation[]> {
   const { data, error } = await supabase
     .from("accommodations")
-    .select("*")
+    .select("id,nom,type,adresse,capacite,contact,commentaires,propose_par,genre_proposant,telephone_proposant,places_disponibles,minutes_salle,date_entree,date_sortie,prix_personne_nuit,enfants_acceptes,animaux_acceptes,actif,source,reservation_active,created_at")
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as Accommodation[]
@@ -41,7 +41,7 @@ async function fetchAccommodations(): Promise<Accommodation[]> {
 async function fetchVehicles(): Promise<Vehicle[]> {
   const { data, error } = await supabase
     .from("vehicles")
-    .select("*")
+    .select("id,conducteur,telephone,lieu_depart,heure_depart,places,commentaires,genre_conducteur,type_trajet,ville_depart,destination,date_depart,date_retour,heure_retour,places_disponibles,gratuit,participation,animaux_acceptes,actif,source,reservation_active,created_at")
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as Vehicle[]
@@ -330,6 +330,19 @@ export async function adminListReservations(password: string) {
   const { data, error } = await supabase.rpc("admin_list_reservations", { p_password: password })
   if (error) throw error
   return (data ?? []) as Reservation[]
+}
+
+export async function adminOfferEmails(password: string) {
+  const { data, error } = await supabase.rpc("admin_offer_emails", { p_password: password })
+  if (error) throw error
+  const payload = (data ?? {}) as {
+    accommodations?: Array<{ id: string; email: string | null }>
+    vehicles?: Array<{ id: string; email: string | null }>
+  }
+  return {
+    accommodations: payload.accommodations ?? [],
+    vehicles: payload.vehicles ?? [],
+  }
 }
 
 export async function adminPatchAccommodation(password: string, id: string, payload: Record<string, unknown>) {
