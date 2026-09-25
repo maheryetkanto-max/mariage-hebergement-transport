@@ -157,7 +157,7 @@ export async function assignGuestVehicle(guestId: string, vehicleId: string | nu
   globalMutate(KEYS.guests)
 }
 
-export async function saveAccommodation(acc: Partial<Accommodation> & { id?: string }) {
+export async function saveAccommodation(acc: Partial<Accommodation> & { id?: string; group_manage_token?: string }) {
   const payload = {
     nom: acc.nom,
     type: acc.type ?? "Autre",
@@ -183,15 +183,18 @@ export async function saveAccommodation(acc: Partial<Accommodation> & { id?: str
     actif: acc.actif ?? true,
     source: acc.source ?? "invite",
   }
+  let insertedId = acc.id
   if (acc.id) {
     const { error } = await supabase.from("accommodations").update(payload).eq("id", acc.id)
     if (error) throw error
   } else {
-    const { error } = await supabase.from("accommodations").insert({ ...payload, reservation_active: Boolean(acc.email_proposant) })
+    const { data, error } = await supabase.from("accommodations").insert({ ...payload, group_manage_token: acc.group_manage_token, reservation_active: Boolean(acc.email_proposant) }).select("id").single()
     if (error) throw error
+    insertedId = data?.id
   }
   globalMutate(KEYS.accommodations)
   globalMutate("offer-people")
+  return insertedId
 }
 
 export async function deleteAccommodation(id: string) {
@@ -201,7 +204,7 @@ export async function deleteAccommodation(id: string) {
   globalMutate(KEYS.guests)
 }
 
-export async function saveVehicle(vehicle: Partial<Vehicle> & { id?: string }) {
+export async function saveVehicle(vehicle: Partial<Vehicle> & { id?: string; group_manage_token?: string }) {
   const gratuit = vehicle.gratuit ?? true
   const payload = {
     conducteur: vehicle.conducteur,
@@ -230,15 +233,18 @@ export async function saveVehicle(vehicle: Partial<Vehicle> & { id?: string }) {
     actif: vehicle.actif ?? true,
     source: vehicle.source ?? "invite",
   }
+  let insertedId = vehicle.id
   if (vehicle.id) {
     const { error } = await supabase.from("vehicles").update(payload).eq("id", vehicle.id)
     if (error) throw error
   } else {
-    const { error } = await supabase.from("vehicles").insert({ ...payload, reservation_active: Boolean(vehicle.email_conducteur) })
+    const { data, error } = await supabase.from("vehicles").insert({ ...payload, group_manage_token: vehicle.group_manage_token, reservation_active: Boolean(vehicle.email_conducteur) }).select("id").single()
     if (error) throw error
+    insertedId = data?.id
   }
   globalMutate(KEYS.vehicles)
   globalMutate("offer-people")
+  return insertedId
 }
 
 export async function deleteVehicle(id: string) {
