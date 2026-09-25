@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { CalendarDays, Car, Clock3, ExternalLink, MapPin, Phone, Plus, Search, X } from "lucide-react"
 import { toast } from "sonner"
-import { saveVehicle, useVehicles } from "@/lib/data"
+import { reserveVehicle, saveVehicle, useVehicles } from "@/lib/data"
 import { OUTBOUND_DATES, RETURN_DATES, type Gender, type TransportType } from "@/lib/types"
 
 const field = "w-full rounded-xl border border-[#6D1925]/15 bg-white/75 px-3 py-2.5 text-sm text-[#34171C] outline-none transition focus:border-[#6D1925]/45 focus:ring-2 focus:ring-[#6D1925]/10"
@@ -31,6 +31,7 @@ export function TransportMarketplace() {
   const [gender, setGender] = useState<"" | Gender>("")
   const [freeOnly, setFreeOnly] = useState(false)
   const [petsOnly, setPetsOnly] = useState(false)
+  const [bookingVehicle, setBookingVehicle] = useState<Vehicle | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -195,6 +196,19 @@ export function TransportMarketplace() {
                     )}
                   </div>
 
+                  <button
+                    type="button"
+                    disabled={places < 1 || !veh.email_conducteur}
+                    onClick={() => setBookingVehicle(veh)}
+                    className="min-h-11 w-full rounded-xl bg-[#6D1925] px-4 text-sm font-semibold text-[#FFF7E9] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {places < 1
+                      ? "Complet"
+                      : !veh.email_conducteur
+                        ? "Réservation en ligne indisponible"
+                        : "Réserver ce transport"}
+                  </button>
+
                   {veh.commentaires && <p className="rounded-xl bg-[#6D1925]/[0.035] p-3 text-xs leading-5 text-[#5B4549]">{veh.commentaires}</p>}
                 </div>
               </article>
@@ -204,6 +218,14 @@ export function TransportMarketplace() {
       )}
 
       <p className="text-center text-xs text-[#6D1925]/45">{filtered.length} transport{filtered.length > 1 ? "s" : ""} affiché{filtered.length > 1 ? "s" : ""}</p>
+
+      {bookingVehicle && (
+        <TransportReservationDialog
+          veh={bookingVehicle}
+          initialPeople={people}
+          onClose={() => setBookingVehicle(null)}
+        />
+      )}
     </div>
   )
 }
@@ -228,6 +250,7 @@ function TransportForm({
     conducteur: "",
     genre_conducteur: "femme" as Gender,
     telephone: "",
+    email_conducteur: "",
     type_trajet: "trajet" as TransportType,
     ville_depart: "",
     lieu_depart: "",
@@ -247,8 +270,8 @@ function TransportForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.conducteur.trim() || !form.telephone.trim() || !form.lieu_depart.trim() || !form.heure_depart) {
-      toast.error("Merci de compléter le conducteur, le téléphone, l’adresse et l’heure de départ.")
+    if (!form.conducteur.trim() || !form.telephone.trim() || !form.email_conducteur.trim() || !form.lieu_depart.trim() || !form.heure_depart) {
+      toast.error("Merci de compléter le conducteur, le téléphone, l’email, l’adresse et l’heure de départ.")
       return
     }
     setSaving(true)
@@ -276,7 +299,7 @@ function TransportForm({
       </div>
 
       <form onSubmit={submit} className="grid gap-4">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field title="Prénom / nom *"><input className={field} value={form.conducteur} onChange={(e) => set("conducteur", e.target.value)} /></Field>
           <Field title="Vous êtes *">
             <select className={field} value={form.genre_conducteur} onChange={(e) => set("genre_conducteur", e.target.value as Gender)}>
@@ -284,6 +307,7 @@ function TransportForm({
             </select>
           </Field>
           <Field title="Téléphone *"><input className={field} type="tel" value={form.telephone} onChange={(e) => set("telephone", e.target.value)} /></Field>
+          <Field title="Email *"><input className={field} type="email" value={form.email_conducteur} onChange={(e) => set("email_conducteur", e.target.value)} /></Field>
         </div>
 
         <Field title="Type de transport">
@@ -340,4 +364,159 @@ function TransportForm({
 
 function Field({ title, children }: { title: string; children: React.ReactNode }) {
   return <label className="block"><span className={label}>{title}</span>{children}</label>
+}
+
+
+function TransportReservationDialog({
+  veh,
+  initialPeople,
+  onClose,
+}: {
+  veh: Vehicle
+  initialPeople: number
+  onClose: () => void
+}) {
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    nom: "",
+    email: "",
+    telephone: "",
+    genre: "femme" as Gender,
+    nbPersonnes: Math.min(Math.max(1, initialPeople), Math.max(1, veh.places_disponibles)),
+    consentement: false,
+  })
+
+  const total = veh.gratuit
+    ? 0
+    : form.nbPersonnes * Number(veh.participation || 0)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.nom.trim() || !form.email.trim() || !form.telephone.trim()) {
+      toast.error("Merci de renseigner votre nom, email et téléphone.")
+      return
+    }
+    if (!form.consentement) {
+      toast.error("Le partage des coordonnées est nécessaire pour confirmer la réservation.")
+      return
+    }
+
+    setSaving(true)
+    try {
+      const result = await reserveVehicle({
+        vehicleId: veh.id,
+        nom: form.nom,
+        email: form.email,
+        telephone: form.telephone,
+        genre: form.genre,
+        nbPersonnes: form.nbPersonnes,
+        consentement: form.consentement,
+      })
+      if (result.emailSent) {
+        toast.success("Réservation confirmée. Les deux fiches de contact ont été envoyées par email.")
+      } else {
+        toast.warning("Réservation confirmée, mais l’envoi des emails n’a pas abouti. Les organisateurs pourront le relancer.")
+      }
+      onClose()
+    } catch (error) {
+      console.error(error)
+      const message = error instanceof Error ? error.message : ""
+      if (message.includes("not_enough_places")) toast.error("Il ne reste plus assez de places.")
+      else toast.error("La réservation n’a pas pu être confirmée.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-4">
+      <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-[#FFF7E9] p-5 shadow-2xl sm:rounded-3xl sm:p-7">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6D1925]/55">Réservation</p>
+            <h2 className="font-serif text-2xl font-semibold text-[#6D1925]">
+              {veh.type_trajet === "navette" ? "Navette" : "Covoiturage"} avec {veh.conducteur}
+            </h2>
+            <p className="mt-1 text-sm text-[#5B4549]">
+              {veh.places_disponibles} place{veh.places_disponibles > 1 ? "s" : ""} restante{veh.places_disponibles > 1 ? "s" : ""}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full p-2 text-[#6D1925] hover:bg-white">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-[#6D1925]/10 bg-white/70 p-4 text-sm text-[#5B4549]">
+          <strong>{dateLabel(veh.date_depart)}</strong>
+          {veh.heure_depart ? " à " + veh.heure_depart : ""}
+          <br />
+          {veh.ville_depart || veh.lieu_depart || "Départ à confirmer"}
+          {veh.destination ? " → " + veh.destination : ""}
+          {veh.date_retour ? <><br />Retour : {dateLabel(veh.date_retour)}{veh.heure_retour ? " à " + veh.heure_retour : ""}</> : null}
+        </div>
+
+        <form onSubmit={submit} className="mt-5 grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field title="Prénom / nom *">
+              <input className={field} value={form.nom} onChange={(e) => setForm((s) => ({ ...s, nom: e.target.value }))} />
+            </Field>
+            <Field title="Vous êtes *">
+              <select className={field} value={form.genre} onChange={(e) => setForm((s) => ({ ...s, genre: e.target.value as Gender }))}>
+                <option value="femme">👩 Femme</option>
+                <option value="homme">👨 Homme</option>
+              </select>
+            </Field>
+            <Field title="Email *">
+              <input className={field} type="email" value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} />
+            </Field>
+            <Field title="Téléphone *">
+              <input className={field} type="tel" value={form.telephone} onChange={(e) => setForm((s) => ({ ...s, telephone: e.target.value }))} />
+            </Field>
+          </div>
+
+          <Field title="Nombre de places">
+            <input
+              className={field}
+              type="number"
+              min={1}
+              max={veh.places_disponibles}
+              value={form.nbPersonnes}
+              onChange={(e) => setForm((s) => ({ ...s, nbPersonnes: Math.min(veh.places_disponibles, Math.max(1, Number(e.target.value) || 1)) }))}
+            />
+          </Field>
+
+          <div className="rounded-2xl border border-[#6D1925]/10 bg-white/70 p-4">
+            <p className="text-xs uppercase tracking-wide text-[#6D1925]/55">Participation totale</p>
+            <p className="mt-1 font-serif text-3xl font-semibold text-[#6D1925]">
+              {total === 0 ? "Gratuit" : total.toFixed(0) + " €"}
+            </p>
+            {!veh.gratuit && (
+              <p className="mt-1 text-xs text-[#5B4549]">
+                {form.nbPersonnes} place{form.nbPersonnes > 1 ? "s" : ""} × {Number(veh.participation || 0).toFixed(0)} €
+              </p>
+            )}
+          </div>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#6D1925]/10 bg-white/60 p-3 text-xs leading-5 text-[#5B4549]">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={form.consentement}
+              onChange={(e) => setForm((s) => ({ ...s, consentement: e.target.checked }))}
+            />
+            <span>
+              J’accepte que mes coordonnées (nom, email et téléphone) soient transmises au conducteur, et de recevoir ses coordonnées par email afin d’organiser le trajet.
+            </span>
+          </label>
+
+          <button
+            disabled={saving}
+            className="min-h-12 rounded-xl bg-[#6D1925] px-5 text-sm font-semibold text-[#FFF7E9] disabled:opacity-60"
+          >
+            {saving ? "Confirmation…" : "Confirmer la réservation"}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
 }
