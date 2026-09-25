@@ -1,6 +1,8 @@
 export type AccommodationType = "Airbnb" | "Hôtel" | "Maison" | "Appartement" | "Autre"
 export type Gender = "homme" | "femme"
 export type TransportType = "trajet" | "navette"
+export type ReservationType = "accommodation" | "vehicle"
+export type ReservationStatus = "confirmee" | "annulee"
 
 export const ACCOMMODATION_TYPES: AccommodationType[] = [
   "Airbnb",
@@ -33,6 +35,8 @@ export interface Accommodation {
   propose_par: string | null
   genre_proposant: Gender | null
   telephone_proposant: string | null
+  email_proposant?: string | null
+  reservation_active: boolean
   places_disponibles: number
   minutes_salle: number | null
   date_entree: string | null
@@ -49,6 +53,8 @@ export interface Vehicle {
   id: string
   conducteur: string
   telephone: string | null
+  email_conducteur?: string | null
+  reservation_active: boolean
   lieu_depart: string | null
   heure_depart: string | null
   places: number
@@ -66,6 +72,27 @@ export interface Vehicle {
   animaux_acceptes: boolean
   actif: boolean
   source: string
+  created_at: string
+}
+
+export interface Reservation {
+  id: string
+  offer_type: ReservationType
+  accommodation_id: string | null
+  vehicle_id: string | null
+  reserver_nom: string
+  reserver_email: string
+  reserver_telephone: string
+  reserver_genre: Gender | null
+  nb_personnes: number
+  date_entree: string | null
+  date_sortie: string | null
+  montant_total: number
+  consentement_coordonnees: boolean
+  statut: ReservationStatus
+  email_status: "pending" | "sent" | "failed"
+  email_error: string | null
+  emails_sent_at: string | null
   created_at: string
 }
 

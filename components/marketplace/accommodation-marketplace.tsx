@@ -15,11 +15,12 @@ import {
   X,
 } from "lucide-react"
 import { toast } from "sonner"
-import { saveAccommodation, useAccommodations } from "@/lib/data"
+import { reserveAccommodation, saveAccommodation, useAccommodations } from "@/lib/data"
 import {
   ACCOMMODATION_TYPES,
   OUTBOUND_DATES,
   RETURN_DATES,
+  type Accommodation,
   type AccommodationType,
   type Gender,
 } from "@/lib/types"
@@ -55,6 +56,7 @@ export function AccommodationMarketplace() {
   const [people, setPeople] = useState(1)
   const [childrenOnly, setChildrenOnly] = useState(false)
   const [petsOnly, setPetsOnly] = useState(false)
+  const [bookingAcc, setBookingAcc] = useState<Accommodation | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -238,6 +240,19 @@ export function AccommodationMarketplace() {
                     )}
                   </div>
 
+                  <button
+                    type="button"
+                    disabled={places < 1 || !acc.reservation_active}
+                    onClick={() => setBookingAcc(acc)}
+                    className="min-h-11 w-full rounded-xl bg-[#6D1925] px-4 text-sm font-semibold text-[#FFF7E9] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {places < 1
+                      ? "Complet"
+                      : !acc.reservation_active
+                        ? "Réservation en ligne indisponible"
+                        : "Réserver ce logement"}
+                  </button>
+
                   {acc.commentaires && (
                     <p className="rounded-xl bg-[#6D1925]/[0.035] p-3 text-xs leading-5 text-[#5B4549]">
                       {acc.commentaires}
@@ -253,6 +268,16 @@ export function AccommodationMarketplace() {
       <p className="text-center text-xs text-[#6D1925]/45">
         {filtered.length} logement{filtered.length > 1 ? "s" : ""} affiché{filtered.length > 1 ? "s" : ""}
       </p>
+
+      {bookingAcc && (
+        <AccommodationReservationDialog
+          acc={bookingAcc}
+          initialArrival={arrival || bookingAcc.date_entree || "2026-12-30"}
+          initialDeparture={departure || bookingAcc.date_sortie || "2027-01-01"}
+          initialPeople={people}
+          onClose={() => setBookingAcc(null)}
+        />
+      )}
     </div>
   )
 }
@@ -286,6 +311,7 @@ function AccommodationForm({
     propose_par: "",
     genre_proposant: "femme" as Gender,
     telephone_proposant: "",
+    email_proposant: "",
     nom: "",
     type: "Airbnb" as AccommodationType,
     adresse: "",
@@ -304,8 +330,8 @@ function AccommodationForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.propose_par.trim() || !form.telephone_proposant.trim() || !form.nom.trim() || !form.adresse.trim()) {
-      toast.error("Merci de compléter le nom, le téléphone, le logement et l’adresse.")
+    if (!form.propose_par.trim() || !form.telephone_proposant.trim() || !form.email_proposant.trim() || !form.nom.trim() || !form.adresse.trim()) {
+      toast.error("Merci de compléter le nom, le téléphone, l’email, le logement et l’adresse.")
       return
     }
     if (form.date_sortie <= form.date_entree) {
@@ -345,7 +371,7 @@ function AccommodationForm({
       </div>
 
       <form onSubmit={submit} className="grid gap-4">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field title="Votre prénom / nom *">
             <input className={field} value={form.propose_par} onChange={(e) => set("propose_par", e.target.value)} />
           </Field>
@@ -357,6 +383,9 @@ function AccommodationForm({
           </Field>
           <Field title="Téléphone *">
             <input className={field} type="tel" value={form.telephone_proposant} onChange={(e) => set("telephone_proposant", e.target.value)} />
+          </Field>
+          <Field title="Email *">
+            <input className={field} type="email" value={form.email_proposant} onChange={(e) => set("email_proposant", e.target.value)} />
           </Field>
         </div>
 
@@ -434,5 +463,179 @@ function Field({ title, children }: { title: string; children: React.ReactNode }
       <span className={label}>{title}</span>
       {children}
     </label>
+  )
+}
+
+
+function AccommodationReservationDialog({
+  acc,
+  initialArrival,
+  initialDeparture,
+  initialPeople,
+  onClose,
+}: {
+  acc: Accommodation
+  initialArrival: string
+  initialDeparture: string
+  initialPeople: number
+  onClose: () => void
+}) {
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    nom: "",
+    email: "",
+    telephone: "",
+    genre: "femme" as Gender,
+    nbPersonnes: Math.min(Math.max(1, initialPeople), Math.max(1, acc.places_disponibles)),
+    dateEntree: initialArrival,
+    dateSortie: initialDeparture,
+    consentement: false,
+  })
+
+  const nights =
+    form.dateEntree && form.dateSortie && form.dateSortie > form.dateEntree
+      ? nightsBetween(form.dateEntree, form.dateSortie)
+      : 0
+  const total =
+    nights * form.nbPersonnes * Number(acc.prix_personne_nuit || 0)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.nom.trim() || !form.email.trim() || !form.telephone.trim()) {
+      toast.error("Merci de renseigner votre nom, email et téléphone.")
+      return
+    }
+    if (!form.consentement) {
+      toast.error("Le partage des coordonnées est nécessaire pour confirmer la réservation.")
+      return
+    }
+    if (form.dateSortie <= form.dateEntree) {
+      toast.error("Vérifiez les dates de séjour.")
+      return
+    }
+
+    setSaving(true)
+    try {
+      const result = await reserveAccommodation({
+        accommodationId: acc.id,
+        nom: form.nom,
+        email: form.email,
+        telephone: form.telephone,
+        genre: form.genre,
+        nbPersonnes: form.nbPersonnes,
+        dateEntree: form.dateEntree,
+        dateSortie: form.dateSortie,
+        consentement: form.consentement,
+      })
+      if (result.emailSent) {
+        toast.success("Réservation confirmée. Les deux fiches de contact ont été envoyées par email.")
+      } else {
+        toast.warning("Réservation confirmée, mais l’envoi des emails n’a pas abouti. Les organisateurs pourront le relancer.")
+      }
+      onClose()
+    } catch (error) {
+      console.error(error)
+      const message = error instanceof Error ? error.message : ""
+      if (message.includes("not_enough_places")) toast.error("Il ne reste plus assez de places.")
+      else if (message.includes("dates_unavailable")) toast.error("Ces dates ne sont plus disponibles.")
+      else toast.error("La réservation n’a pas pu être confirmée.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-4">
+      <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-[#FFF7E9] p-5 shadow-2xl sm:rounded-3xl sm:p-7">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6D1925]/55">Réservation</p>
+            <h2 className="font-serif text-2xl font-semibold text-[#6D1925]">{acc.nom}</h2>
+            <p className="mt-1 text-sm text-[#5B4549]">
+              {acc.places_disponibles} place{acc.places_disponibles > 1 ? "s" : ""} restante{acc.places_disponibles > 1 ? "s" : ""}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full p-2 text-[#6D1925] hover:bg-white">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="mt-5 grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field title="Prénom / nom *">
+              <input className={field} value={form.nom} onChange={(e) => setForm((s) => ({ ...s, nom: e.target.value }))} />
+            </Field>
+            <Field title="Vous êtes *">
+              <select className={field} value={form.genre} onChange={(e) => setForm((s) => ({ ...s, genre: e.target.value as Gender }))}>
+                <option value="femme">👩 Femme</option>
+                <option value="homme">👨 Homme</option>
+              </select>
+            </Field>
+            <Field title="Email *">
+              <input className={field} type="email" value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} />
+            </Field>
+            <Field title="Téléphone *">
+              <input className={field} type="tel" value={form.telephone} onChange={(e) => setForm((s) => ({ ...s, telephone: e.target.value }))} />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field title="Arrivée">
+              <select className={field} value={form.dateEntree} onChange={(e) => setForm((s) => ({ ...s, dateEntree: e.target.value }))}>
+                {OUTBOUND_DATES.filter((d) => !acc.date_entree || d.value >= acc.date_entree).map((d) => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+            </Field>
+            <Field title="Départ">
+              <select className={field} value={form.dateSortie} onChange={(e) => setForm((s) => ({ ...s, dateSortie: e.target.value }))}>
+                {RETURN_DATES.filter((d) => !acc.date_sortie || d.value <= acc.date_sortie).map((d) => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+            </Field>
+            <Field title="Nombre de personnes">
+              <input
+                className={field}
+                type="number"
+                min={1}
+                max={acc.places_disponibles}
+                value={form.nbPersonnes}
+                onChange={(e) => setForm((s) => ({ ...s, nbPersonnes: Math.min(acc.places_disponibles, Math.max(1, Number(e.target.value) || 1)) }))}
+              />
+            </Field>
+          </div>
+
+          <div className="rounded-2xl border border-[#6D1925]/10 bg-white/70 p-4">
+            <p className="text-xs uppercase tracking-wide text-[#6D1925]/55">Montant calculé automatiquement</p>
+            <p className="mt-1 font-serif text-3xl font-semibold text-[#6D1925]">
+              {total === 0 ? "Gratuit" : total.toFixed(0) + " €"}
+            </p>
+            <p className="mt-1 text-xs text-[#5B4549]">
+              {form.nbPersonnes} personne{form.nbPersonnes > 1 ? "s" : ""} × {nights} nuit{nights > 1 ? "s" : ""} × {Number(acc.prix_personne_nuit || 0).toFixed(0)} €
+            </p>
+          </div>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#6D1925]/10 bg-white/60 p-3 text-xs leading-5 text-[#5B4549]">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={form.consentement}
+              onChange={(e) => setForm((s) => ({ ...s, consentement: e.target.checked }))}
+            />
+            <span>
+              J’accepte que mes coordonnées (nom, email et téléphone) soient transmises à la personne qui propose ce logement, et de recevoir ses coordonnées par email afin d’organiser la réservation.
+            </span>
+          </label>
+
+          <button
+            disabled={saving}
+            className="min-h-12 rounded-xl bg-[#6D1925] px-5 text-sm font-semibold text-[#FFF7E9] disabled:opacity-60"
+          >
+            {saving ? "Confirmation…" : "Confirmer la réservation"}
+          </button>
+        </form>
+      </div>
+    </div>
   )
 }
