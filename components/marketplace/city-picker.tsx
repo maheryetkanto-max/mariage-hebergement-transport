@@ -20,6 +20,11 @@ export function isListedCity(value: string, area: CityArea) {
   return cities[area].some((city) => normalizeCity(city.name) === normalizeCity(value))
 }
 
+export function idfDepartment(value: string) {
+  const city = ileDeFrance.find((entry) => normalizeCity(entry.name) === normalizeCity(value))
+  return city?.code.slice(0, 2) ?? null
+}
+
 export function CityPicker({ value, onChange, area, placeholder, className, label }: {
   value: string
   onChange: (value: string) => void

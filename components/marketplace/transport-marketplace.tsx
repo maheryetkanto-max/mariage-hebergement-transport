@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, Car, Clock3, ExternalLink, MapPin, MessageCircle, Plus, Search, X } from "lucide-react"
+import { CalendarDays, Car, Clock3, MapPin, MessageCircle, Plus, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import { reserveVehicle, saveVehicle, useVehicles, useOfferPeople } from "@/lib/data"
 import { OUTBOUND_DATES, RETURN_DATES, type Gender, type TransportType, type Vehicle } from "@/lib/types"
@@ -9,11 +9,13 @@ import { NamedPeople, personLabel, type NamedPerson } from "@/components/marketp
 import { AddressPicker } from "@/components/marketplace/address-picker"
 import { FrenchPhone, isFrenchPhone } from "@/components/marketplace/french-phone"
 import { InterestChoices, PeopleList } from "@/components/marketplace/people-and-interests"
-import { CityPicker, isListedCity, normalizeCity } from "@/components/marketplace/city-picker"
+import { CityPicker, idfDepartment, isListedCity, normalizeCity } from "@/components/marketplace/city-picker"
 
 const adultChoices = [1, 2, 3, 4, 5, 6, 7]
 const CHURCH = "Église protestante Unie de Troyes"
 const VENUE = "Clos Belair"
+const STATIONS = ["Troyes", "Vendeuvre-sur-Barse", "Bar-sur-Aube", "Romilly-sur-Seine", "Nogent-sur-Seine"] as const
+const DEPARTMENTS = [["75", "Paris"], ["77", "Seine-et-Marne"], ["78", "Yvelines"], ["91", "Essonne"], ["92", "Hauts-de-Seine"], ["93", "Seine-Saint-Denis"], ["94", "Val-de-Marne"], ["95", "Val-d’Oise"]] as const
 
 const field = "w-full rounded-xl border border-[#6D1925]/15 bg-white/75 px-3 py-2.5 text-sm text-[#34171C] outline-none transition focus:border-[#6D1925]/45 focus:ring-2 focus:ring-[#6D1925]/10"
 const label = "mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6D1925]/70"
@@ -37,7 +39,7 @@ export function TransportMarketplace() {
   const [type, setType] = useState<"" | "church" | "venue" | "navette">("")
   const [date, setDate] = useState("")
   const [returnDate, setReturnDate] = useState("")
-  const [city, setCity] = useState("")
+  const [department, setDepartment] = useState("")
   const [arrivalCity, setArrivalCity] = useState("")
   const [people, setPeople] = useState(1)
   const [gender, setGender] = useState<"" | Gender>("")
@@ -58,7 +60,6 @@ export function TransportMarketplace() {
   }, [showForm])
 
   const filtered = useMemo(() => {
-    const q = normalizeCity(city)
     const returnQuery = normalizeCity(arrivalCity)
     return vehicles
       .filter((v) => v.actif !== false)
@@ -69,9 +70,10 @@ export function TransportMarketplace() {
       .filter((v) => !gender || v.genre_conducteur === gender)
       .filter((v) => !freeOnly || v.gratuit)
       .filter((v) => !petsOnly || v.animaux_acceptes)
-      .filter((v) => !q || normalizeCity((v.ville_depart ?? "") + " " + (v.lieu_depart ?? "")).includes(q))
+      .filter((v) => !department || idfDepartment(v.ville_depart ?? "") === department)
       .filter((v) => !returnQuery || normalizeCity(v.retour_ville_arrivee ?? "").includes(returnQuery))
-  }, [vehicles, type, date, returnDate, city, arrivalCity, people, gender, freeOnly, petsOnly])
+      .sort((a, b) => (a.ville_depart ?? "").localeCompare(b.ville_depart ?? "", "fr", { sensitivity: "base" }))
+  }, [vehicles, type, date, returnDate, department, arrivalCity, people, gender, freeOnly, petsOnly])
 
   return (
     <div className="space-y-6">
@@ -117,8 +119,8 @@ export function TransportMarketplace() {
             </select>
           </div>
           <div>
-            <span className={label}>Ville de départ (Île-de-France)</span>
-            <CityPicker className={field} label="Chercher une ville de départ" area="idf" placeholder="Tapez une ville…" value={city} onChange={setCity} />
+            <span className={label}>Département de départ</span>
+            <select className={field} value={department} onChange={(e) => setDepartment(e.target.value)}><option value="">Tous les départements · toutes les voitures</option>{DEPARTMENTS.map(([code, name]) => <option key={code} value={code}>{code} · {name}</option>)}</select>
           </div>
           <div>
             <span className={label}>Places nécessaires (adultes et enfants)</span>
@@ -146,7 +148,7 @@ export function TransportMarketplace() {
 
       {manageUrl && <div className="rounded-xl border border-[#6D1925]/15 bg-white p-4 text-sm"><strong>Votre lien personnel :</strong> <a className="underline text-[#6D1925]" href={manageUrl}>Créer ou suivre le groupe WhatsApp de votre fiche</a>. Conservez ce lien.</div>}
 
-      {showForm && <TransportForm onClose={() => setShowForm(false)} onPublished={(url) => { setManageUrl(url); window.localStorage.setItem("last-offer-group-link", url); setShowForm(false); setType(""); setDate(""); setReturnDate(""); setCity(""); setArrivalCity(""); setPeople(1); setGender(""); setFreeOnly(false); setPetsOnly(false); window.setTimeout(() => document.getElementById("transport-offers")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30) }} source={offerSource} />}
+      {showForm && <TransportForm onClose={() => setShowForm(false)} onPublished={(url) => { setManageUrl(url); window.localStorage.setItem("last-offer-group-link", url); setShowForm(false); setType(""); setDate(""); setReturnDate(""); setDepartment(""); setArrivalCity(""); setPeople(1); setGender(""); setFreeOnly(false); setPetsOnly(false); window.setTimeout(() => document.getElementById("transport-offers")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30) }} source={offerSource} />}
 
       {isLoading ? (
         <p className="py-10 text-center text-sm text-muted-foreground">Chargement des transports…</p>
@@ -154,14 +156,13 @@ export function TransportMarketplace() {
         <div className="rounded-2xl border border-dashed border-[#6D1925]/20 bg-white/45 px-5 py-12 text-center">
           <Car className="mx-auto mb-3 h-9 w-9 text-[#6D1925]/35" />
           <p className="font-medium text-[#4B242B]">Aucun transport ne correspond à ces critères.</p>
-          <p className="mt-1 text-sm text-[#6D1925]/55">Essayez une autre date, ville ou zone.</p>
-          <button type="button" onClick={() => { setType(""); setDate(""); setReturnDate(""); setCity(""); setArrivalCity(""); setPeople(1); setGender(""); setFreeOnly(false); setPetsOnly(false) }} className="mt-4 min-h-11 rounded-xl border border-[#6D1925]/25 bg-white px-4 text-sm font-semibold text-[#6D1925]">Afficher tous les transports</button>
+          <p className="mt-1 text-sm text-[#6D1925]/55">Essayez une autre date ou affichez tous les départements.</p>
+          <button type="button" onClick={() => { setType(""); setDate(""); setReturnDate(""); setDepartment(""); setArrivalCity(""); setPeople(1); setGender(""); setFreeOnly(false); setPetsOnly(false) }} className="mt-4 min-h-11 rounded-xl border border-[#6D1925]/25 bg-white px-4 text-sm font-semibold text-[#6D1925]">Afficher tous les transports</button>
         </div>
       ) : (
         <div id="transport-offers" className="grid scroll-mt-20 gap-4 lg:grid-cols-2">
           {filtered.map((veh) => {
             const places = veh.places_disponibles ?? veh.places
-            const mapHref = veh.ville_depart ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(veh.ville_depart) : undefined
             return (
               <article key={veh.id} className="overflow-hidden rounded-2xl border border-[#6D1925]/10 bg-white shadow-[0_8px_30px_rgba(109,25,37,0.06)]">
                 <div className="border-b border-[#6D1925]/8 bg-[#FFF7E9]/55 p-5">
@@ -189,14 +190,13 @@ export function TransportMarketplace() {
                   </div>
 
                   {veh.ville_depart && (
-                    <a href={mapHref} target="_blank" rel="noreferrer" className="flex items-start gap-2 rounded-xl bg-[#FFF7E9]/60 p-3 text-sm text-[#5B4549] transition hover:bg-[#FFF7E9]">
+                    <div className="flex items-start gap-2 rounded-xl bg-[#FFF7E9]/60 p-3 text-sm text-[#5B4549]">
                       <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#6D1925]" />
                       <span className="min-w-0 flex-1">
-                        <strong>{veh.ville_depart || "Départ"}</strong>
-                        {veh.destination && <><br /><span className="text-xs">→ {veh.destination}</span></>}
+                        <strong className="font-serif text-xl text-[#6D1925]">{veh.type_trajet === "navette" ? `Gare de ${veh.ville_depart}` : veh.ville_depart}</strong>
+                        {veh.destination && <><br /><span className="text-xs">→ {veh.destination === VENUE ? `Salle de réception : ${VENUE}` : veh.destination}</span></>}
                       </span>
-                      {veh.ville_depart && <ExternalLink className="h-4 w-4 shrink-0" />}
-                    </a>
+                    </div>
                   )}
 
                   {veh.date_retour && (
@@ -269,6 +269,7 @@ function TransportForm({
   const [saving, setSaving] = useState(false)
   const [occupants, setOccupants] = useState<NamedPerson[]>([])
   const [returnFromAccommodation, setReturnFromAccommodation] = useState(false)
+  const [fromStation, setFromStation] = useState(false)
   const [form, setForm] = useState({
     conducteur: "",
     genre_conducteur: "femme" as Gender,
@@ -302,8 +303,8 @@ function TransportForm({
       toast.error("Merci de compléter le nom, le téléphone, l’email, la ville, le lieu et l’heure de départ.")
       return
     }
-    if (!isListedCity(form.ville_depart, "idf") || (form.date_retour && !isListedCity(form.retour_ville_arrivee, "idf"))) {
-      toast.error("Choisissez une ville d’Île-de-France dans la liste pour l’aller et le retour.")
+    if (!(fromStation ? STATIONS.includes(form.ville_depart as typeof STATIONS[number]) : isListedCity(form.ville_depart, "idf")) || (form.date_retour && !isListedCity(form.retour_ville_arrivee, "idf"))) {
+      toast.error("Choisissez une ville d’Île-de-France ou une gare proposée, ainsi que la ville de retour.")
       return
     }
     if (form.date_retour && returnFromAccommodation && !isListedCity(form.retour_lieu_depart, "aube")) {
@@ -359,11 +360,11 @@ function TransportForm({
 
         <NamedPeople title="Adultes et enfants qui voyagent déjà avec vous (prénom et nom)" value={occupants} onChange={setOccupants} />
         <InterestChoices value={form.centres_interet} onChange={(values) => set("centres_interet", values)} />
-        <p className="text-sm font-medium text-[#6D1925]">🚗 Trajet d’Île-de-France vers le mariage</p>
+        <div><span className={label}>Type de départ *</span><select className={field} value={fromStation ? "station" : "idf"} onChange={(e) => { const station = e.target.value === "station"; setFromStation(station); set("ville_depart", ""); set("lieu_depart", ""); set("type_trajet", station ? "navette" : "trajet") }}><option value="idf">🚗 Depuis une ville d’Île-de-France</option><option value="station">🚉 Prise en charge à une gare autour de Troyes</option></select></div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div><span className={label}>Ville de départ (Île-de-France) *</span><CityPicker className={field} label="Ville de départ" area="idf" placeholder="Tapez une ville…" value={form.ville_depart} onChange={(value) => set("ville_depart", value)} /></div>
-          <Field title="Lieu de départ précis *"><AddressPicker className={field} label="Lieu de prise en charge précis" city={form.ville_depart} value={form.lieu_depart} onChange={(value) => set("lieu_depart", value)} /></Field>
+          <div><span className={label}>{fromStation ? "Gare de prise en charge *" : "Ville de départ (Île-de-France) *"}</span>{fromStation ? <select className={field} value={form.ville_depart} onChange={(e) => { set("ville_depart", e.target.value); set("lieu_depart", e.target.value ? `Gare de ${e.target.value}` : "") }}><option value="">Choisir une gare</option>{STATIONS.map((station) => <option key={station} value={station}>Gare de {station}</option>)}</select> : <CityPicker className={field} label="Ville de départ" area="idf" placeholder="Tapez une ville…" value={form.ville_depart} onChange={(value) => set("ville_depart", value)} />}</div>
+          <Field title={fromStation ? "Point de rendez-vous exact à la gare *" : "Lieu de départ précis *"}><AddressPicker className={field} label="Lieu de prise en charge précis" city={form.ville_depart} value={form.lieu_depart} onChange={(value) => set("lieu_depart", value)} /></Field>
         </div>
 
         <Field title="Lieu de dépose à l’aller *"><select className={field} value={form.destination} onChange={(e) => set("destination", e.target.value)}><option value={CHURCH}>{CHURCH}</option><option value={VENUE}>{VENUE} (salle de réception)</option></select></Field>
@@ -375,7 +376,7 @@ function TransportForm({
             </select>
           </Field>
           <Field title="Heure de départ *"><select className={field} value={form.heure_depart} onChange={(e) => set("heure_depart", e.target.value)}><option value="">Choisir une heure</option>{Array.from({ length: 96 }, (_, index) => { const value = `${String(Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}`; return <option key={value} value={value}>{value}</option> })}</select></Field>
-          <Field title="Places disponibles (adultes et enfants) *"><select className={field} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Number(e.target.value))}>{adultChoices.map((count) => <option key={count} value={count}>{count} place{count > 1 ? "s" : ""}</option>)}</select></Field>
+          <Field title="Places disponibles (adultes et enfants) *"><select className={field} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Number(e.target.value))}>{adultChoices.map((count) => <option key={count} value={count}>{count} place{count > 1 ? "s" : ""}</option>)}</select><span className="mt-1 block text-xs text-[#6D1925]/65">Chaque enfant occupe une place dans la voiture.</span></Field>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -451,7 +452,7 @@ function TransportReservationDialog({
       return
     }
     if (bookedPeople.length !== form.nbPersonnes - 1 || bookedPeople.some((person) => !person.firstName.trim() || !person.lastName.trim())) {
-      toast.error("Indiquez le prénom de chaque adulte pour lequel vous confirmez une place.")
+      toast.error("Indiquez le prénom et le nom de chaque adulte ou enfant qui prend une place.")
       return
     }
     if (!form.consentement) {
@@ -518,7 +519,7 @@ function TransportReservationDialog({
           <div className="mt-5 grid gap-4 rounded-2xl border border-[#6D1925]/10 bg-white/75 p-5">
             <h3 className="font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée</h3>
             <p className="text-sm text-[#5B4549]">{confirmation.emailSent ? "Votre place est décomptée. Vous pouvez contacter la personne ci-dessous." : "Votre place est décomptée. Vous pouvez contacter la personne ci-dessous ; la notification par email a échoué."}</p>
-            {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]"><p className="font-semibold">Contact : {confirmation.providerContact.name}</p>{confirmation.providerContact.phone && <a className="block underline" href={`tel:${confirmation.providerContact.phone}`}>{confirmation.providerContact.phone}</a>}{confirmation.providerContact.email && <a className="block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}{confirmation.providerContact.address && <a className="block underline" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(confirmation.providerContact.address)}`}>📍 Voir le lieu de prise en charge sur Google Maps : {confirmation.providerContact.address}</a>}{confirmation.providerContact.members?.length > 0 && <div className="mt-3 border-t border-[#6D1925]/10 pt-3"><p className="font-semibold">Autres participants confirmés</p>{confirmation.providerContact.members.map((member, i) => <p key={`${member.email}-${i}`}>{member.name} · <a className="underline" href={`mailto:${member.email}`}>{member.email}</a></p>)}</div>}</div>}
+            {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]"><p className="font-semibold">Contact : {confirmation.providerContact.name}</p>{confirmation.providerContact.phone && <a className="block underline" href={`tel:${confirmation.providerContact.phone}`}>{confirmation.providerContact.phone}</a>}{confirmation.providerContact.email && <a className="block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}{confirmation.providerContact.address && <div className="mt-3"><p className="font-semibold">Vérifiez le lieu exact de votre prise en charge :</p><a className="block underline" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(confirmation.providerContact.address)}`}>📍 {confirmation.providerContact.address} · ouvrir dans Google Maps</a></div>}{confirmation.providerContact.members?.length > 0 && <div className="mt-3 border-t border-[#6D1925]/10 pt-3"><p className="font-semibold">Autres participants confirmés</p>{confirmation.providerContact.members.map((member, i) => <p key={`${member.email}-${i}`}>{member.name} · <a className="underline" href={`mailto:${member.email}`}>{member.email}</a></p>)}</div>}</div>}
             <a href={confirmation.cancellationUrl} className="text-sm font-semibold underline text-[#6D1925]">Conserver mon lien pour annuler cette place si besoin</a>
             {!confirmation.whatsappUrl && <a href={confirmation.groupUrl} className="text-sm font-semibold underline text-[#6D1925]">Voir le groupe WhatsApp ou le créer à partir de trois personnes</a>}
             {confirmation.whatsappUrl && <a href={confirmation.whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-[#10351d]"><MessageCircle className="h-5 w-5" /> Rejoindre le groupe WhatsApp</a>}

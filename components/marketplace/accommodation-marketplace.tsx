@@ -430,7 +430,7 @@ function AccommodationForm({
           <Field title="Places adultes disponibles *">
             <input className={field} type="number" min={1} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Math.max(1, Number(e.target.value) || 1))} />
           </Field>
-          <Field title="Minutes de la salle">
+          <Field title="Temps estimé jusqu’à la salle de réception (en minutes)">
             <input className={field} type="number" min={0} value={form.minutes_salle} onChange={(e) => set("minutes_salle", Math.max(0, Number(e.target.value) || 0))} />
           </Field>
           <Field title="Prix / pers. / nuit (€) · 0 = gratuit">
