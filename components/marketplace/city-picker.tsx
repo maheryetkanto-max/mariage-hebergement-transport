@@ -1,15 +1,16 @@
 "use client"
 
-import { useId, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useState } from "react"
 import ileDeFrance from "@/data/communes-idf.json"
 import aube from "@/data/communes-aube.json"
 
-export type CityArea = "idf" | "aube" | "idf-aube"
+export type CityArea = "idf" | "aube" | "idf-aube" | "troyes-2h"
 
 const cities = {
   idf: ileDeFrance,
   aube,
   "idf-aube": [...ileDeFrance, ...aube],
+  "troyes-2h": aube,
 }
 
 export function normalizeCity(value: string) {
@@ -35,16 +36,41 @@ export function CityPicker({ value, onChange, area, placeholder, className, labe
 }) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
+  const [nearTroyes, setNearTroyes] = useState<{name: string; code: string}[]>([])
   const id = useId()
+
+  useEffect(() => {
+    if (area !== "troyes-2h" || value.trim().length < 2) { setNearTroyes([]); return }
+    const controller = new AbortController()
+    const timeout = window.setTimeout(async () => {
+      try {
+        const url = "https://geo.api.gouv.fr/communes?nom=" + encodeURIComponent(value.trim()) + "&fields=nom,code,centre&format=json&geometry=centre"
+        const response = await fetch(url, { signal: controller.signal })
+        if (!response.ok) return
+        const results = await response.json() as { nom: string; code: string; centre?: { coordinates: [number, number] } }[]
+        const nearby = results.filter(({ centre }) => {
+          if (!centre?.coordinates) return false
+          const [longitude, latitude] = centre.coordinates
+          const phi = (latitude - 48.2973) * Math.PI / 180
+          const lambda = (longitude - 4.0744) * Math.PI / 180
+          const haversine = Math.sin(phi / 2) ** 2 + Math.cos(48.2973 * Math.PI / 180) * Math.cos(latitude * Math.PI / 180) * Math.sin(lambda / 2) ** 2
+          return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(haversine))) <= 150
+        })
+        setNearTroyes(nearby.map(({ nom, code }) => ({ name: nom, code })))
+      } catch { /* keep the local Aube suggestions when offline */ }
+    }, 250)
+    return () => { window.clearTimeout(timeout); controller.abort() }
+  }, [area, value])
   const suggestions = useMemo(() => {
     const query = normalizeCity(value)
-    const matches = cities[area].filter((city) => !query || normalizeCity(city.name).includes(query))
+    const source = area === "troyes-2h" ? [...aube, ...nearTroyes] : cities[area]
+    const matches = source.filter((city, index) => source.findIndex((candidate) => candidate.code === city.code) === index && (!query || normalizeCity(city.name).includes(query)))
     return matches.sort((a, b) => {
       const aStarts = normalizeCity(a.name).startsWith(query) ? 0 : 1
       const bStarts = normalizeCity(b.name).startsWith(query) ? 0 : 1
       return aStarts - bStarts || a.name.localeCompare(b.name, "fr")
     }).slice(0, query ? undefined : 10)
-  }, [area, value])
+  }, [area, value, nearTroyes])
 
   return <div className="relative">
     <input
