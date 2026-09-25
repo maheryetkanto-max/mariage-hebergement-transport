@@ -35,7 +35,8 @@ export interface Accommodation {
   propose_par: string | null
   genre_proposant: Gender | null
   telephone_proposant: string | null
-  email_proposant: string | null
+  email_proposant?: string | null
+  reservation_active: boolean
   places_disponibles: number
   minutes_salle: number | null
   date_entree: string | null
@@ -52,7 +53,8 @@ export interface Vehicle {
   id: string
   conducteur: string
   telephone: string | null
-  email_conducteur: string | null
+  email_conducteur?: string | null
+  reservation_active: boolean
   lieu_depart: string | null
   heure_depart: string | null
   places: number
