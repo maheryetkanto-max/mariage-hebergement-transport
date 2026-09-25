@@ -22,8 +22,10 @@ function genderEmoji(gender: Gender | null) {
 export function TransportMarketplace() {
   const { data: vehicles = [], isLoading } = useVehicles()
   const [showForm, setShowForm] = useState(false)
+  const [offerSource, setOfferSource] = useState<"invite" | "admin">("invite")
   const [type, setType] = useState<"" | TransportType>("")
   const [date, setDate] = useState("")
+  const [returnDate, setReturnDate] = useState("")
   const [city, setCity] = useState("")
   const [people, setPeople] = useState(1)
   const [gender, setGender] = useState<"" | Gender>("")
@@ -31,7 +33,9 @@ export function TransportMarketplace() {
   const [petsOnly, setPetsOnly] = useState(false)
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("action") === "add") setShowForm(true)
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("action") === "add") setShowForm(true)
+    if (params.get("source") === "admin") setOfferSource("admin")
   }, [])
 
   const filtered = useMemo(() => {
@@ -41,11 +45,12 @@ export function TransportMarketplace() {
       .filter((v) => (v.places_disponibles ?? v.places) >= people)
       .filter((v) => !type || v.type_trajet === type)
       .filter((v) => !date || v.date_depart === date)
+      .filter((v) => !returnDate || v.date_retour === returnDate)
       .filter((v) => !gender || v.genre_conducteur === gender)
       .filter((v) => !freeOnly || v.gratuit)
       .filter((v) => !petsOnly || v.animaux_acceptes)
       .filter((v) => !q || ((v.ville_depart ?? "") + " " + (v.lieu_depart ?? "")).toLowerCase().includes(q))
-  }, [vehicles, type, date, city, people, gender, freeOnly, petsOnly])
+  }, [vehicles, type, date, returnDate, city, people, gender, freeOnly, petsOnly])
 
   return (
     <div className="space-y-6">
@@ -66,7 +71,7 @@ export function TransportMarketplace() {
 
       <section className="rounded-2xl border border-[#6D1925]/10 bg-white/65 p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#6D1925]"><Search className="h-4 w-4" /> Trouver une place</div>
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-5">
           <div>
             <span className={label}>Type</span>
             <select className={field} value={type} onChange={(e) => setType(e.target.value as "" | TransportType)}>
@@ -80,6 +85,13 @@ export function TransportMarketplace() {
             <select className={field} value={date} onChange={(e) => setDate(e.target.value)}>
               <option value="">Toutes</option>
               {OUTBOUND_DATES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <span className={label}>Retour</span>
+            <select className={field} value={returnDate} onChange={(e) => setReturnDate(e.target.value)}>
+              <option value="">Peu importe</option>
+              {RETURN_DATES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
             </select>
           </div>
           <div>
@@ -106,7 +118,7 @@ export function TransportMarketplace() {
         </div>
       </section>
 
-      {showForm && <TransportForm onClose={() => setShowForm(false)} />}
+      {showForm && <TransportForm onClose={() => setShowForm(false)} source={offerSource} />}
 
       {isLoading ? (
         <p className="py-10 text-center text-sm text-muted-foreground">Chargement des transports…</p>
@@ -204,7 +216,13 @@ function Sticker({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full border border-[#6D1925]/10 bg-[#FFF7E9] px-2.5 py-1 text-xs font-medium text-[#5B3037]">{children}</span>
 }
 
-function TransportForm({ onClose }: { onClose: () => void }) {
+function TransportForm({
+  onClose,
+  source,
+}: {
+  onClose: () => void
+  source: "invite" | "admin"
+}) {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     conducteur: "",
@@ -235,7 +253,7 @@ function TransportForm({ onClose }: { onClose: () => void }) {
     }
     setSaving(true)
     try {
-      await saveVehicle({ ...form, places: form.places_disponibles, source: "invite", actif: true })
+      await saveVehicle({ ...form, places: form.places_disponibles, source, actif: true })
       toast.success("Votre transport a bien été ajouté.")
       onClose()
     } catch (error) {
