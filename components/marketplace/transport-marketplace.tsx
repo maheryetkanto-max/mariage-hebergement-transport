@@ -198,13 +198,13 @@ export function TransportMarketplace() {
 
                   <button
                     type="button"
-                    disabled={places < 1 || !veh.email_conducteur}
+                    disabled={places < 1 || !veh.reservation_active}
                     onClick={() => setBookingVehicle(veh)}
                     className="min-h-11 w-full rounded-xl bg-[#6D1925] px-4 text-sm font-semibold text-[#FFF7E9] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {places < 1
                       ? "Complet"
-                      : !veh.email_conducteur
+                      : !veh.reservation_active
                         ? "Réservation en ligne indisponible"
                         : "Réserver ce transport"}
                   </button>
