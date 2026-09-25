@@ -5,6 +5,8 @@ import { CalendarDays, Car, Clock3, ExternalLink, MapPin, MessageCircle, Plus, S
 import { toast } from "sonner"
 import { reserveVehicle, saveVehicle, useVehicles, useOfferPeople } from "@/lib/data"
 import { OUTBOUND_DATES, RETURN_DATES, type Gender, type TransportType, type Vehicle } from "@/lib/types"
+import { NamedPeople, personLabel, type NamedPerson } from "@/components/marketplace/named-people"
+import { AddressPicker } from "@/components/marketplace/address-picker"
 import { FrenchPhone, isFrenchPhone } from "@/components/marketplace/french-phone"
 import { InterestChoices, PeopleList } from "@/components/marketplace/people-and-interests"
 import { CityPicker, isListedCity, normalizeCity } from "@/components/marketplace/city-picker"
@@ -119,9 +121,9 @@ export function TransportMarketplace() {
             <CityPicker className={field} label="Chercher une ville de départ" area="idf" placeholder="Tapez une ville…" value={city} onChange={setCity} />
           </div>
           <div>
-            <span className={label}>Places adultes nécessaires</span>
+            <span className={label}>Places nécessaires (adultes et enfants)</span>
             <select className={field} value={people} onChange={(e) => setPeople(Number(e.target.value))}>
-              {adultChoices.map((count) => <option key={count} value={count}>{count} adulte{count > 1 ? "s" : ""}</option>)}
+              {adultChoices.map((count) => <option key={count} value={count}>{count} personne{count > 1 ? "s" : ""}</option>)}
             </select>
           </div>
         </div>
@@ -265,6 +267,7 @@ function TransportForm({
   source: "invite" | "admin"
 }) {
   const [saving, setSaving] = useState(false)
+  const [occupants, setOccupants] = useState<NamedPerson[]>([])
   const [returnFromAccommodation, setReturnFromAccommodation] = useState(false)
   const [form, setForm] = useState({
     conducteur: "",
@@ -315,15 +318,16 @@ function TransportForm({
       toast.error("Choisissez une heure de retour par tranche de 15 minutes.")
       return
     }
+    if (occupants.some((person) => !person.firstName.trim() || !person.lastName.trim())) { toast.error("Indiquez le prénom et le nom de chaque adulte ou enfant avec vous."); return }
     setSaving(true)
     try {
       const groupToken = crypto.randomUUID()
-      const offerId = await saveVehicle({ ...form, group_manage_token: groupToken, retour_lieu_depart: form.date_retour ? form.retour_lieu_depart : "", retour_ville_arrivee: form.date_retour ? form.retour_ville_arrivee : "", places: form.places_disponibles, source, actif: true })
+      const offerId = await saveVehicle({ ...form, compagnons_prenoms: occupants.map(personLabel).join(", "), group_manage_token: groupToken, retour_lieu_depart: form.date_retour ? form.retour_lieu_depart : "", retour_ville_arrivee: form.date_retour ? form.retour_ville_arrivee : "", places: form.places_disponibles, source, actif: true })
       toast.success("Votre transport a bien été ajouté.")
       onPublished(`/groupe?type=vehicle&offre=${offerId}&gestion=${groupToken}`)
     } catch (error) {
       console.error(error)
-      toast.error("Impossible d’ajouter le transport pour le moment.")
+      toast.error(error instanceof Error && error.message.includes("vehicles_french_phone") ? "Vérifiez le numéro français (+33 suivi de 9 chiffres)." : "Impossible d’ajouter le transport. Vérifiez les champs et réessayez.")
     } finally {
       setSaving(false)
     }
@@ -353,13 +357,13 @@ function TransportForm({
           <Field title="Email *"><input className={field} type="email" value={form.email_conducteur} onChange={(e) => set("email_conducteur", e.target.value)} /></Field>
         </div>
 
-        <Field title="Prénoms des adultes qui voyagent avec vous (avec leur accord, séparés par des virgules)"><input className={field} maxLength={220} placeholder="Ex. Kanto, Mahery" value={form.compagnons_prenoms} onChange={(e) => set("compagnons_prenoms", e.target.value)} /></Field>
+        <NamedPeople title="Adultes et enfants qui voyagent déjà avec vous (prénom et nom)" value={occupants} onChange={setOccupants} />
         <InterestChoices value={form.centres_interet} onChange={(values) => set("centres_interet", values)} />
         <p className="text-sm font-medium text-[#6D1925]">🚗 Trajet d’Île-de-France vers le mariage</p>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div><span className={label}>Ville de départ (Île-de-France) *</span><CityPicker className={field} label="Ville de départ" area="idf" placeholder="Tapez une ville…" value={form.ville_depart} onChange={(value) => set("ville_depart", value)} /></div>
-          <Field title="Lieu de départ précis *"><input className={field} placeholder="Adresse ou gare précise" value={form.lieu_depart} onChange={(e) => set("lieu_depart", e.target.value)} /></Field>
+          <Field title="Lieu de départ précis *"><AddressPicker className={field} label="Lieu de prise en charge précis" city={form.ville_depart} value={form.lieu_depart} onChange={(value) => set("lieu_depart", value)} /></Field>
         </div>
 
         <Field title="Lieu de dépose à l’aller *"><select className={field} value={form.destination} onChange={(e) => set("destination", e.target.value)}><option value={CHURCH}>{CHURCH}</option><option value={VENUE}>{VENUE} (salle de réception)</option></select></Field>
@@ -371,7 +375,7 @@ function TransportForm({
             </select>
           </Field>
           <Field title="Heure de départ *"><select className={field} value={form.heure_depart} onChange={(e) => set("heure_depart", e.target.value)}><option value="">Choisir une heure</option>{Array.from({ length: 96 }, (_, index) => { const value = `${String(Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}`; return <option key={value} value={value}>{value}</option> })}</select></Field>
-          <Field title="Places adultes disponibles *"><select className={field} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Number(e.target.value))}>{adultChoices.map((count) => <option key={count} value={count}>{count} place{count > 1 ? "s" : ""}</option>)}</select></Field>
+          <Field title="Places disponibles (adultes et enfants) *"><select className={field} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Number(e.target.value))}>{adultChoices.map((count) => <option key={count} value={count}>{count} place{count > 1 ? "s" : ""}</option>)}</select></Field>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -422,6 +426,7 @@ function TransportReservationDialog({
 }) {
   const [saving, setSaving] = useState(false)
   const [confirmation, setConfirmation] = useState<{ emailSent: boolean; cancellationUrl: string; groupUrl: string; whatsappUrl: string | null; providerContact: { name: string | null; phone: string | null; email: string | null; address: string | null; members: { name: string; email: string }[] } | null } | null>(null)
+  const [bookedPeople, setBookedPeople] = useState<NamedPerson[]>([])
   const [form, setForm] = useState({
     nom: "",
     email: "",
@@ -432,6 +437,7 @@ function TransportReservationDialog({
     origin: "",
     companions: "",
     interests: [] as string[],
+    luggage: "petit" as "petit" | "moyen" | "gros",
   })
 
   const total = veh.gratuit
@@ -444,7 +450,7 @@ function TransportReservationDialog({
       toast.error("Merci de renseigner votre nom, email et téléphone.")
       return
     }
-    if (form.companions.split(",").map((name) => name.trim()).filter(Boolean).length !== form.nbPersonnes - 1) {
+    if (bookedPeople.length !== form.nbPersonnes - 1 || bookedPeople.some((person) => !person.firstName.trim() || !person.lastName.trim())) {
       toast.error("Indiquez le prénom de chaque adulte pour lequel vous confirmez une place.")
       return
     }
@@ -462,7 +468,7 @@ function TransportReservationDialog({
         telephone: form.telephone,
         genre: form.genre,
         nbPersonnes: form.nbPersonnes,
-        profile: { origin: form.origin, companions: form.companions.split(",").map((v) => v.trim()).filter(Boolean), interests: form.interests },
+        profile: { origin: form.origin, companions: bookedPeople.map(personLabel), interests: form.interests, luggage: form.luggage },
         consentement: form.consentement,
       })
       if (result.emailSent) {
@@ -521,7 +527,8 @@ function TransportReservationDialog({
         ) : <form onSubmit={submit} className="mt-5 grid gap-4">
           <p className="text-sm text-[#5B4549]">Vos prénom et nom sont nécessaires pour confirmer la place. Seuls vos prénoms et centres d’intérêt seront visibles par les autres invités ; vos coordonnées restent privées.</p>
           <Field title="Ville d’où vous venez (facultatif)"><input className={field} maxLength={80} value={form.origin} onChange={(e) => setForm((s) => ({ ...s, origin: e.target.value }))} /></Field>
-          <Field title="Prénoms des autres adultes avec vous (séparés par des virgules)"><input className={field} maxLength={220} value={form.companions} onChange={(e) => setForm((s) => ({ ...s, companions: e.target.value }))} /></Field>
+          <NamedPeople title="Chaque autre adulte ou enfant qui prend une place avec vous (prénom et nom)" value={bookedPeople} onChange={setBookedPeople} />
+          <Field title="Taille de votre bagage"><select className={field} value={form.luggage} onChange={(e) => setForm((s) => ({ ...s, luggage: e.target.value as typeof s.luggage }))}><option value="petit">👜 Petit</option><option value="moyen">🧳 Moyen</option><option value="gros">🧳 Gros</option></select></Field>
           <InterestChoices value={form.interests} onChange={(interests) => setForm((s) => ({ ...s, interests }))} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field title="Prénom / nom *">
@@ -541,7 +548,7 @@ function TransportReservationDialog({
             </Field>
           </div>
 
-          <Field title="Nombre de places">
+          <Field title="Nombre de places (adultes et enfants)">
             <input
               className={field}
               type="number"

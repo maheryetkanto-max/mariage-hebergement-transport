@@ -18,6 +18,6 @@ export function InterestChoices({ value, onChange }: { value: string[]; onChange
   </fieldset>
 }
 
-export function PeopleList({ people }: { people: { name: string; origin: string | null; interests: string[] }[] }) {
-  return <div className="space-y-2">{people.map((person, i) => <div key={`${person.name}-${i}`} className="rounded-xl bg-[#FFF7E9] p-3 text-sm"><strong className="text-[#6D1925]">🙂 {person.name}</strong>{person.origin && <span className="ml-2 text-xs text-[#6D1925]/65">📍 {person.origin}</span>}{person.interests?.length > 0 && <p className="mt-1 text-xs text-[#5B4549]">{person.name} aime : {person.interests.map((value) => `${INTERESTS.find((item) => item.value === value)?.emoji ?? "✨"} ${value}`).join(" · ")}</p>}</div>)}</div>
+export function PeopleList({ people }: { people: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[] }) {
+  return <div className="space-y-2">{people.map((person, i) => <div key={`${person.name}-${i}`} className="rounded-xl bg-[#FFF7E9] p-3 text-sm"><strong className="text-[#6D1925]">🙂 {person.name}</strong>{person.origin && <span className="ml-2 text-xs text-[#6D1925]/65">📍 {person.origin}</span>}{person.luggage && <span className="ml-2 text-xs text-[#6D1925]/65">🧳 Bagage {person.luggage}</span>}{person.interests?.length > 0 && <p className="mt-1 text-xs text-[#5B4549]">{person.name} aime : {person.interests.map((value) => `${INTERESTS.find((item) => item.value === value)?.emoji ?? "✨"} ${value}`).join(" · ")}</p>}</div>)}</div>
 }

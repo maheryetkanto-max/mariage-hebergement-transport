@@ -16,6 +16,8 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { reserveAccommodation, saveAccommodation, useAccommodations, useOfferPeople } from "@/lib/data"
+import { NamedPeople, personLabel, type NamedPerson } from "@/components/marketplace/named-people"
+import { AddressPicker } from "@/components/marketplace/address-picker"
 import { FrenchPhone, isFrenchPhone } from "@/components/marketplace/french-phone"
 import { InterestChoices, PeopleList } from "@/components/marketplace/people-and-interests"
 import { CityPicker, isListedCity, normalizeCity } from "@/components/marketplace/city-picker"
@@ -309,6 +311,7 @@ function AccommodationForm({
   source: "invite" | "admin"
 }) {
   const [saving, setSaving] = useState(false)
+  const [occupants, setOccupants] = useState<NamedPerson[]>([])
   const [form, setForm] = useState({
     propose_par: "",
     genre_proposant: "femme" as Gender,
@@ -348,11 +351,13 @@ function AccommodationForm({
       toast.error("La date de sortie doit être après la date d’entrée.")
       return
     }
+    if (occupants.some((person) => !person.firstName.trim() || !person.lastName.trim())) { toast.error("Indiquez le prénom et le nom de chaque adulte ou enfant avec vous."); return }
     setSaving(true)
     try {
       const groupToken = crypto.randomUUID()
       const offerId = await saveAccommodation({
         ...form,
+        compagnons_prenoms: occupants.map(personLabel).join(", "),
         group_manage_token: groupToken,
         capacite: form.places_disponibles,
         contact: form.propose_par,
@@ -412,11 +417,11 @@ function AccommodationForm({
           </Field>
         </div>
 
-        <Field title="Prénoms des adultes qui partagent ce logement (avec leur accord, séparés par des virgules)"><input className={field} maxLength={220} placeholder="Ex. Kanto, Mahery" value={form.compagnons_prenoms} onChange={(e) => set("compagnons_prenoms", e.target.value)} /></Field>
+        <NamedPeople title="Adultes et enfants qui logent déjà avec vous (prénom et nom)" value={occupants} onChange={setOccupants} />
         <InterestChoices value={form.centres_interet} onChange={(values) => set("centres_interet", values)} />
 
         <Field title="Adresse exacte *">
-          <input className={field} placeholder="Rue, ville, code postal" value={form.adresse} onChange={(e) => set("adresse", e.target.value)} />
+          <AddressPicker className={field} label="Adresse exacte du logement" city={form.ville_logement} value={form.adresse} onChange={(value) => set("adresse", value)} />
         </Field>
 
         <div><span className={label}>Ville du logement (Aube ou Île-de-France) *</span><CityPicker className={field} label="Ville du logement" area="idf-aube" placeholder="Tapez une ville…" value={form.ville_logement} onChange={(value) => set("ville_logement", value)} /></div>
@@ -501,6 +506,7 @@ function AccommodationReservationDialog({
 }) {
   const [saving, setSaving] = useState(false)
   const [confirmation, setConfirmation] = useState<{ emailSent: boolean; cancellationUrl: string; groupUrl: string; whatsappUrl: string | null; providerContact: { name: string | null; phone: string | null; email: string | null; address: string | null; members: { name: string; email: string }[] } | null } | null>(null)
+  const [bookedPeople, setBookedPeople] = useState<NamedPerson[]>([])
   const [form, setForm] = useState({
     nom: "",
     email: "",
@@ -528,7 +534,7 @@ function AccommodationReservationDialog({
       toast.error("Merci de renseigner votre nom, email et téléphone.")
       return
     }
-    if (form.companions.split(",").map((name) => name.trim()).filter(Boolean).length !== form.nbPersonnes - 1) {
+    if (bookedPeople.filter((p) => p.kind === "adult").length !== form.nbPersonnes - 1 || bookedPeople.some((p) => !p.firstName.trim() || !p.lastName.trim())) {
       toast.error("Indiquez le prénom de chaque adulte pour lequel vous confirmez une place.")
       return
     }
@@ -550,7 +556,7 @@ function AccommodationReservationDialog({
         telephone: form.telephone,
         genre: form.genre,
         nbPersonnes: form.nbPersonnes,
-        profile: { origin: form.origin, companions: form.companions.split(",").map((v) => v.trim()).filter(Boolean), interests: form.interests },
+        profile: { origin: form.origin, companions: bookedPeople.map(personLabel), interests: form.interests },
         dateEntree: form.dateEntree,
         dateSortie: form.dateSortie,
         consentement: form.consentement,
@@ -601,7 +607,7 @@ function AccommodationReservationDialog({
         ) : <form onSubmit={submit} className="mt-5 grid gap-4">
           <p className="text-sm text-[#5B4549]">Vos prénom et nom sont nécessaires pour confirmer la place. Seuls vos prénoms et centres d’intérêt seront visibles par les autres invités ; vos coordonnées restent privées.</p>
           <Field title="Ville d’où vous venez (facultatif)"><input className={field} maxLength={80} value={form.origin} onChange={(e) => setForm((s) => ({ ...s, origin: e.target.value }))} /></Field>
-          <Field title="Prénoms des autres adultes avec vous (séparés par des virgules)"><input className={field} maxLength={220} value={form.companions} onChange={(e) => setForm((s) => ({ ...s, companions: e.target.value }))} /></Field>
+          <NamedPeople title="Autres adultes et enfants avec vous (prénom et nom pour chacun)" value={bookedPeople} onChange={setBookedPeople} />
           <InterestChoices value={form.interests} onChange={(interests) => setForm((s) => ({ ...s, interests }))} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field title="Prénom / nom *">
