@@ -8,6 +8,7 @@ import {
   Clock3,
   ExternalLink,
   MapPin,
+  MessageCircle,
   Phone,
   Plus,
   Search,
@@ -312,6 +313,7 @@ function AccommodationForm({
     genre_proposant: "femme" as Gender,
     telephone_proposant: "",
     email_proposant: "",
+    whatsapp_group_url: "",
     nom: "",
     type: "Airbnb" as AccommodationType,
     adresse: "",
@@ -338,10 +340,15 @@ function AccommodationForm({
       toast.error("La date de sortie doit être après la date d’entrée.")
       return
     }
+    if (form.whatsapp_group_url && !/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+$/.test(form.whatsapp_group_url.trim())) {
+      toast.error("Collez le lien d’invitation du groupe WhatsApp (chat.whatsapp.com/…).")
+      return
+    }
     setSaving(true)
     try {
       await saveAccommodation({
         ...form,
+        whatsapp_group_url: form.whatsapp_group_url.trim(),
         capacite: form.places_disponibles,
         contact: form.propose_par,
         source,
@@ -444,6 +451,13 @@ function AccommodationForm({
           <textarea className={field} rows={3} placeholder="Ex. pas de chat, linge fourni, chambre à l’étage…" value={form.commentaires} onChange={(e) => set("commentaires", e.target.value)} />
         </Field>
 
+        <div className="rounded-2xl border border-[#6D1925]/10 bg-white/70 p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold text-[#6D1925]"><MessageCircle className="h-4 w-4" /> Groupe WhatsApp (facultatif)</p>
+          <p className="mt-1 text-xs leading-5 text-[#5B4549]">Créez votre groupe dans WhatsApp, puis copiez son lien d’invitation. Il sera transmis uniquement aux personnes ayant confirmé une réservation.</p>
+          <a href="https://faq.whatsapp.com/3242937609289432/" target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-semibold text-[#6D1925] underline">Comment copier le lien du groupe ↗</a>
+          <input className={`${field} mt-3`} type="url" inputMode="url" placeholder="https://chat.whatsapp.com/…" aria-label="Lien d’invitation au groupe WhatsApp" value={form.whatsapp_group_url} onChange={(e) => set("whatsapp_group_url", e.target.value)} />
+        </div>
+
         <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
           <button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-[#6D1925]/20 px-4 text-sm font-semibold text-[#6D1925]">
             Annuler
@@ -481,6 +495,7 @@ function AccommodationReservationDialog({
   onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
+  const [confirmation, setConfirmation] = useState<{ emailSent: boolean; whatsappUrl: string | null } | null>(null)
   const [form, setForm] = useState({
     nom: "",
     email: "",
@@ -532,7 +547,7 @@ function AccommodationReservationDialog({
       } else {
         toast.warning("Réservation confirmée, mais l’envoi des emails n’a pas abouti. Les organisateurs pourront le relancer.")
       }
-      onClose()
+      setConfirmation({ emailSent: result.emailSent, whatsappUrl: result.whatsappUrl })
     } catch (error) {
       console.error(error)
       const message = error instanceof Error ? error.message : ""
@@ -560,7 +575,14 @@ function AccommodationReservationDialog({
           </button>
         </div>
 
-        <form onSubmit={submit} className="mt-5 grid gap-4">
+        {confirmation ? (
+          <div className="mt-5 grid gap-4 rounded-2xl border border-[#6D1925]/10 bg-white/75 p-5">
+            <h3 className="font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée</h3>
+            <p className="text-sm text-[#5B4549]">{confirmation.emailSent ? "Les coordonnées ont été envoyées par email aux deux personnes." : "Les emails n’ont pas abouti ; les organisateurs pourront les relancer."}</p>
+            {confirmation.whatsappUrl && <a href={confirmation.whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-[#10351d]"><MessageCircle className="h-5 w-5" /> Rejoindre le groupe WhatsApp</a>}
+            <button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-[#6D1925]/20 px-4 text-sm font-semibold text-[#6D1925]">Fermer</button>
+          </div>
+        ) : <form onSubmit={submit} className="mt-5 grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field title="Prénom / nom *">
               <input className={field} value={form.nom} onChange={(e) => setForm((s) => ({ ...s, nom: e.target.value }))} />
@@ -634,7 +656,7 @@ function AccommodationReservationDialog({
           >
             {saving ? "Confirmation…" : "Confirmer la réservation"}
           </button>
-        </form>
+        </form>}
       </div>
     </div>
   )

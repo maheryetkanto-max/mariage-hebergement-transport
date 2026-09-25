@@ -65,6 +65,11 @@ function block(title: string, rows: Array<[string, string]>) {
     </div>`;
 }
 
+function whatsappButton(url: unknown) {
+  if (typeof url !== "string" || !/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+$/.test(url)) return "";
+  return `<div style="margin:20px 0"><a href="${esc(url)}" style="display:inline-block;background:#25D366;color:#10351d;padding:14px 18px;border-radius:10px;font-weight:700;text-decoration:none">Rejoindre le groupe WhatsApp</a><p style="font-size:12px;color:#765f63">Ce lien est réservé aux personnes ayant confirmé leur réservation.</p></div>`;
+}
+
 async function sendViaAppsScript(url: string, secret: string, messages: Array<Record<string, string>>) {
   const response = await fetch(url, {
     method: "POST",
@@ -144,6 +149,7 @@ Deno.serve(async (req: Request) => {
     let reserverOfferBlock = "";
     let providerOfferBlock = "";
     let subjectLabel = "";
+    let whatsappUrl = "";
 
     if (reservation.offer_type === "accommodation") {
       const { data: offer, error } = await admin
@@ -154,6 +160,7 @@ Deno.serve(async (req: Request) => {
       if (error || !offer) throw new Error("accommodation_not_found");
 
       providerEmail = offer.email_proposant ?? "";
+      whatsappUrl = offer.whatsapp_group_url ?? "";
       providerName = offer.propose_par ?? offer.contact ?? "la personne qui propose le logement";
       providerPhone = offer.telephone_proposant ?? "";
       subjectLabel = "hébergement";
@@ -186,6 +193,7 @@ Deno.serve(async (req: Request) => {
       if (error || !offer) throw new Error("vehicle_not_found");
 
       providerEmail = offer.email_conducteur ?? "";
+      whatsappUrl = offer.whatsapp_group_url ?? "";
       providerName = offer.conducteur ?? "le conducteur";
       providerPhone = offer.telephone ?? "";
       subjectLabel = offer.type_trajet === "navette" ? "navette" : "covoiturage";
@@ -231,7 +239,7 @@ Deno.serve(async (req: Request) => {
     const reserverHtml = shell(
       "Votre réservation est confirmée",
       "Votre réservation a bien été enregistrée. Voici le récapitulatif ainsi que les coordonnées de la personne qui propose cette offre.",
-      reserverOfferBlock + providerContactBlock,
+      reserverOfferBlock + providerContactBlock + whatsappButton(whatsappUrl),
     );
 
     const providerHtml = shell(
@@ -244,7 +252,7 @@ Deno.serve(async (req: Request) => {
       {
         to: reservation.reserver_email,
         subject: `Réservation confirmée — ${subjectLabel} mariage Mahery & Kanto`,
-        body: "Votre réservation est confirmée. Consultez la version HTML de ce message pour les détails.",
+        body: `Votre réservation est confirmée. Consultez la version HTML de ce message pour les détails.${whatsappButton(whatsappUrl) ? `\nRejoindre le groupe WhatsApp : ${whatsappUrl}` : ""}`,
         htmlBody: reserverHtml,
         html: reserverHtml,
         replyTo: providerEmail,

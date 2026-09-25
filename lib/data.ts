@@ -158,6 +158,7 @@ export async function saveAccommodation(acc: Partial<Accommodation> & { id?: str
     genre_proposant: acc.genre_proposant || null,
     telephone_proposant: acc.telephone_proposant || null,
     email_proposant: acc.email_proposant || null,
+    whatsapp_group_url: acc.whatsapp_group_url || null,
     places_disponibles: acc.places_disponibles ?? acc.capacite ?? 0,
     minutes_salle: acc.minutes_salle ?? null,
     date_entree: acc.date_entree || null,
@@ -191,6 +192,7 @@ export async function saveVehicle(vehicle: Partial<Vehicle> & { id?: string }) {
     conducteur: vehicle.conducteur,
     telephone: vehicle.telephone || null,
     email_conducteur: vehicle.email_conducteur || null,
+    whatsapp_group_url: vehicle.whatsapp_group_url || null,
     lieu_depart: vehicle.lieu_depart || null,
     heure_depart: vehicle.heure_depart || null,
     places: vehicle.places ?? vehicle.places_disponibles ?? 0,
@@ -242,6 +244,15 @@ async function sendReservationEmails(reservationId: string, emailToken: string) 
   if (error) throw error
 }
 
+async function reservationWhatsappLink(reservationId: string, emailToken: string) {
+  const { data, error } = await supabase.rpc("reservation_whatsapp_link", {
+    p_reservation_id: reservationId,
+    p_email_token: emailToken,
+  })
+  if (error) throw error
+  return typeof data === "string" ? data : null
+}
+
 export async function reserveAccommodation(input: ReservationContact & {
   accommodationId: string
   dateEntree: string
@@ -274,7 +285,8 @@ export async function reserveAccommodation(input: ReservationContact & {
     emailSent = false
   }
 
-  return { reservationId, emailSent }
+  const whatsappUrl = await reservationWhatsappLink(reservationId, emailToken).catch(() => null)
+  return { reservationId, emailSent, whatsappUrl }
 }
 
 export async function reserveVehicle(input: ReservationContact & {
@@ -305,7 +317,8 @@ export async function reserveVehicle(input: ReservationContact & {
     emailSent = false
   }
 
-  return { reservationId, emailSent }
+  const whatsappUrl = await reservationWhatsappLink(reservationId, emailToken).catch(() => null)
+  return { reservationId, emailSent, whatsappUrl }
 }
 
 export async function organizerHasPassword() {

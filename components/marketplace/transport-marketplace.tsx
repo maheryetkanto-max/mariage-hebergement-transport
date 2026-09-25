@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, Car, Clock3, ExternalLink, MapPin, Phone, Plus, Search, X } from "lucide-react"
+import { CalendarDays, Car, Clock3, ExternalLink, MapPin, MessageCircle, Phone, Plus, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import { reserveVehicle, saveVehicle, useVehicles } from "@/lib/data"
 import { OUTBOUND_DATES, RETURN_DATES, type Gender, type TransportType, type Vehicle } from "@/lib/types"
@@ -251,6 +251,7 @@ function TransportForm({
     genre_conducteur: "femme" as Gender,
     telephone: "",
     email_conducteur: "",
+    whatsapp_group_url: "",
     type_trajet: "trajet" as TransportType,
     ville_depart: "",
     lieu_depart: "",
@@ -274,9 +275,13 @@ function TransportForm({
       toast.error("Merci de compléter le conducteur, le téléphone, l’email, l’adresse et l’heure de départ.")
       return
     }
+    if (form.whatsapp_group_url && !/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+$/.test(form.whatsapp_group_url.trim())) {
+      toast.error("Collez le lien d’invitation du groupe WhatsApp (chat.whatsapp.com/…).")
+      return
+    }
     setSaving(true)
     try {
-      await saveVehicle({ ...form, places: form.places_disponibles, source, actif: true })
+      await saveVehicle({ ...form, whatsapp_group_url: form.whatsapp_group_url.trim(), places: form.places_disponibles, source, actif: true })
       toast.success("Votre transport a bien été ajouté.")
       onClose()
     } catch (error) {
@@ -353,6 +358,13 @@ function TransportForm({
 
         <Field title="Informations complémentaires"><textarea className={field} rows={3} placeholder="Ex. petit bagage uniquement, passage par telle gare…" value={form.commentaires} onChange={(e) => set("commentaires", e.target.value)} /></Field>
 
+        <div className="rounded-2xl border border-[#6D1925]/10 bg-white/70 p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold text-[#6D1925]"><MessageCircle className="h-4 w-4" /> Groupe WhatsApp (facultatif)</p>
+          <p className="mt-1 text-xs leading-5 text-[#5B4549]">Créez votre groupe dans WhatsApp, puis copiez son lien d’invitation. Il sera transmis uniquement aux personnes ayant confirmé une réservation.</p>
+          <a href="https://faq.whatsapp.com/3242937609289432/" target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-semibold text-[#6D1925] underline">Comment copier le lien du groupe ↗</a>
+          <input className={`${field} mt-3`} type="url" inputMode="url" placeholder="https://chat.whatsapp.com/…" aria-label="Lien d’invitation au groupe WhatsApp" value={form.whatsapp_group_url} onChange={(e) => set("whatsapp_group_url", e.target.value)} />
+        </div>
+
         <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
           <button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-[#6D1925]/20 px-4 text-sm font-semibold text-[#6D1925]">Annuler</button>
           <button disabled={saving} type="submit" className="min-h-11 rounded-xl bg-[#6D1925] px-5 text-sm font-semibold text-[#FFF7E9] disabled:opacity-60">{saving ? "Enregistrement…" : "Publier le transport"}</button>
@@ -377,6 +389,7 @@ function TransportReservationDialog({
   onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
+  const [confirmation, setConfirmation] = useState<{ emailSent: boolean; whatsappUrl: string | null } | null>(null)
   const [form, setForm] = useState({
     nom: "",
     email: "",
@@ -417,7 +430,7 @@ function TransportReservationDialog({
       } else {
         toast.warning("Réservation confirmée, mais l’envoi des emails n’a pas abouti. Les organisateurs pourront le relancer.")
       }
-      onClose()
+      setConfirmation({ emailSent: result.emailSent, whatsappUrl: result.whatsappUrl })
     } catch (error) {
       console.error(error)
       const message = error instanceof Error ? error.message : ""
@@ -455,7 +468,14 @@ function TransportReservationDialog({
           {veh.date_retour ? <><br />Retour : {dateLabel(veh.date_retour)}{veh.heure_retour ? " à " + veh.heure_retour : ""}</> : null}
         </div>
 
-        <form onSubmit={submit} className="mt-5 grid gap-4">
+        {confirmation ? (
+          <div className="mt-5 grid gap-4 rounded-2xl border border-[#6D1925]/10 bg-white/75 p-5">
+            <h3 className="font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée</h3>
+            <p className="text-sm text-[#5B4549]">{confirmation.emailSent ? "Les coordonnées ont été envoyées par email aux deux personnes." : "Les emails n’ont pas abouti ; les organisateurs pourront les relancer."}</p>
+            {confirmation.whatsappUrl && <a href={confirmation.whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-[#10351d]"><MessageCircle className="h-5 w-5" /> Rejoindre le groupe WhatsApp</a>}
+            <button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-[#6D1925]/20 px-4 text-sm font-semibold text-[#6D1925]">Fermer</button>
+          </div>
+        ) : <form onSubmit={submit} className="mt-5 grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field title="Prénom / nom *">
               <input className={field} value={form.nom} onChange={(e) => setForm((s) => ({ ...s, nom: e.target.value }))} />
@@ -515,7 +535,7 @@ function TransportReservationDialog({
           >
             {saving ? "Confirmation…" : "Confirmer la réservation"}
           </button>
-        </form>
+        </form>}
       </div>
     </div>
   )
