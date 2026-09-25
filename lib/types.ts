@@ -1,4 +1,6 @@
 export type AccommodationType = "Airbnb" | "Hôtel" | "Maison" | "Appartement" | "Autre"
+export type Gender = "homme" | "femme"
+export type TransportType = "trajet" | "navette"
 
 export const ACCOMMODATION_TYPES: AccommodationType[] = [
   "Airbnb",
@@ -8,6 +10,18 @@ export const ACCOMMODATION_TYPES: AccommodationType[] = [
   "Autre",
 ]
 
+export const OUTBOUND_DATES = [
+  { value: "2026-12-29", label: "29 décembre" },
+  { value: "2026-12-30", label: "30 décembre" },
+  { value: "2026-12-31", label: "31 décembre" },
+] as const
+
+export const RETURN_DATES = [
+  { value: "2026-12-31", label: "31 décembre" },
+  { value: "2027-01-01", label: "1er janvier" },
+  { value: "2027-01-02", label: "2 janvier" },
+] as const
+
 export interface Accommodation {
   id: string
   nom: string
@@ -16,6 +30,18 @@ export interface Accommodation {
   capacite: number
   contact: string | null
   commentaires: string | null
+  propose_par: string | null
+  genre_proposant: Gender | null
+  telephone_proposant: string | null
+  places_disponibles: number
+  minutes_salle: number | null
+  date_entree: string | null
+  date_sortie: string | null
+  prix_personne_nuit: number
+  enfants_acceptes: boolean
+  animaux_acceptes: boolean
+  actif: boolean
+  source: string
   created_at: string
 }
 
@@ -27,6 +53,19 @@ export interface Vehicle {
   heure_depart: string | null
   places: number
   commentaires: string | null
+  genre_conducteur: Gender | null
+  type_trajet: TransportType
+  ville_depart: string | null
+  destination: string | null
+  date_depart: string | null
+  date_retour: string | null
+  heure_retour: string | null
+  places_disponibles: number
+  gratuit: boolean
+  participation: number
+  animaux_acceptes: boolean
+  actif: boolean
+  source: string
   created_at: string
 }
 
@@ -45,13 +84,11 @@ export interface Guest {
   created_at: string
 }
 
-/** A guest with its resolved relations, used across the UI. */
 export interface GuestWithRelations extends Guest {
   accommodation: Accommodation | null
   vehicle: Vehicle | null
 }
 
-/** Occupancy computed from guests for an accommodation or vehicle. */
 export interface Occupancy {
   occupied: number
   remaining: number

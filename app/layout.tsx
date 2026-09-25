@@ -15,8 +15,7 @@ const cormorant = Cormorant_Garamond({
 export const metadata: Metadata = {
   title: "Hébergement & Transport — Mariage M&K",
   description:
-    "Gérez l'hébergement et le transport des invités du mariage de M&K : suivi, affectations et alertes.",
-  generator: "v0.app",
+    "Trouvez ou proposez un hébergement et un transport pour le mariage de Mahery & Kanto.",
 }
 
 export const viewport: Viewport = {
