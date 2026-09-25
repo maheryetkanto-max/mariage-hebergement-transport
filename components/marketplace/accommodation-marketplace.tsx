@@ -150,7 +150,7 @@ export function AccommodationMarketplace() {
           </div>
           <div>
             <span className={label}>Ville du logement</span>
-            <CityPicker className={field} label="Chercher la ville du logement" area="idf-aube" placeholder="Troyes, Massy…" value={city} onChange={setCity} />
+            <CityPicker className={field} label="Chercher la ville du logement" area="troyes-2h" placeholder="Tape une commune autour de Troyes…" value={city} onChange={setCity} />
           </div>
           <div>
             <span className={label}>Places adultes nécessaires</span>
@@ -347,8 +347,8 @@ function AccommodationForm({
       toast.error("Indique les prénoms et noms des propriétaires, le téléphone, l’email et la ville.")
       return
     }
-    if (!isListedCity(form.ville_logement, "idf-aube")) {
-      toast.error("Choisissez la ville du logement dans la liste (Aube ou Île-de-France).")
+    if (!form.ville_logement.trim()) {
+      toast.error("Indique la ville du logement près de Troyes.")
       return
     }
     if (form.date_sortie <= form.date_entree) {
