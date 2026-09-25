@@ -88,6 +88,9 @@ export interface Reservation {
   montant_total: number
   consentement_coordonnees: boolean
   statut: ReservationStatus
+  email_status: "pending" | "sent" | "failed"
+  email_error: string | null
+  emails_sent_at: string | null
   created_at: string
 }
 
