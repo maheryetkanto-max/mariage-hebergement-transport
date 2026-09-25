@@ -237,12 +237,14 @@ Deno.serve(async (req: Request) => {
     ]);
 
     const cancellationUrl = `https://mariage-mk-app.vercel.app/annuler?reservation=${encodeURIComponent(reservationId)}&code=${encodeURIComponent(emailToken)}`;
+    const groupUrl = `https://mariage-mk-app.vercel.app/groupe?type=${encodeURIComponent(reservation.offer_type)}&offre=${encodeURIComponent(reservation.offer_type === "vehicle" ? reservation.vehicle_id : reservation.accommodation_id)}&reservation=${encodeURIComponent(reservationId)}&code=${encodeURIComponent(emailToken)}`;
+    const groupButton = `<p style="margin-top:18px"><a href="${esc(groupUrl)}" style="color:#6D1925;font-weight:bold">Voir ou rejoindre le groupe WhatsApp de cette fiche</a></p>`;
     const cancellationButton = `<p style="margin-top:18px"><a href="${esc(cancellationUrl)}" style="color:#6D1925;font-weight:bold">Annuler ma place et la rendre disponible</a></p>`;
 
     const reserverHtml = shell(
       "Votre réservation est confirmée",
       "Votre réservation a bien été enregistrée. Voici le récapitulatif ainsi que les coordonnées de la personne qui propose cette offre.",
-      reserverOfferBlock + providerContactBlock + whatsappButton(whatsappUrl) + cancellationButton,
+      reserverOfferBlock + providerContactBlock + whatsappButton(whatsappUrl) + groupButton + cancellationButton,
     );
 
     const providerHtml = shell(
@@ -255,7 +257,7 @@ Deno.serve(async (req: Request) => {
       {
         to: reservation.reserver_email,
         subject: `Réservation confirmée — ${subjectLabel} mariage Mahery & Kanto`,
-        body: `Votre réservation est confirmée. Pour annuler votre place : ${cancellationUrl}. Consultez la version HTML de ce message pour les détails.${whatsappButton(whatsappUrl) ? `\nRejoindre le groupe WhatsApp : ${whatsappUrl}` : ""}`,
+        body: `Votre réservation est confirmée. Pour voir le groupe WhatsApp : ${groupUrl}. Pour annuler votre place : ${cancellationUrl}. Consultez la version HTML de ce message pour les détails.${whatsappButton(whatsappUrl) ? `\nRejoindre le groupe WhatsApp : ${whatsappUrl}` : ""}`,
         htmlBody: reserverHtml,
         html: reserverHtml,
         replyTo: providerEmail,
