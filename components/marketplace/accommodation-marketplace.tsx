@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner"
 import { reserveAccommodation, saveAccommodation, useAccommodations, useOfferPeople } from "@/lib/data"
 import { NamedPeople, personLabel, type NamedPerson } from "@/components/marketplace/named-people"
+import { OwnerFields, emptyOwnerNames, ownerFirstNames, ownerFullNames, ownerIsComplete } from "@/components/marketplace/owner-names"
 import { AddressPicker } from "@/components/marketplace/address-picker"
 import { FrenchPhone, isFrenchPhone } from "@/components/marketplace/french-phone"
 import { InterestChoices, PeopleList } from "@/components/marketplace/people-and-interests"
@@ -63,6 +64,7 @@ export function AccommodationMarketplace() {
   const [arrival, setArrival] = useState("")
   const [departure, setDeparture] = useState("")
   const [people, setPeople] = useState(1)
+  const [childrenOverSix, setChildrenOverSix] = useState(0)
   const [city, setCity] = useState("")
   const [childrenOnly, setChildrenOnly] = useState(false)
   const [petsOnly, setPetsOnly] = useState(false)
@@ -84,13 +86,13 @@ export function AccommodationMarketplace() {
     () =>
       accommodations
         .filter((a) => a.actif !== false)
-        .filter((a) => (a.places_disponibles ?? a.capacite) >= people)
+        .filter((a) => (a.places_disponibles ?? a.capacite) >= people + childrenOverSix)
         .filter((a) => !city || normalizeCity((a.ville_logement ?? "") + " " + (a.adresse ?? "")).includes(normalizeCity(city)))
         .filter((a) => !childrenOnly || a.enfants_acceptes)
         .filter((a) => !petsOnly || a.animaux_acceptes)
         .filter((a) => !arrival || !a.date_entree || a.date_entree <= arrival)
         .filter((a) => !departure || !a.date_sortie || a.date_sortie >= departure),
-    [accommodations, arrival, departure, people, city, childrenOnly, petsOnly],
+    [accommodations, arrival, departure, people, childrenOverSix, city, childrenOnly, petsOnly],
   )
 
   const selectedNights =
@@ -148,7 +150,7 @@ export function AccommodationMarketplace() {
           </div>
           <div>
             <span className={label}>Ville du logement</span>
-            <CityPicker className={field} label="Chercher la ville du logement" area="idf-aube" placeholder="Troyes, Massy…" value={city} onChange={setCity} />
+            <CityPicker className={field} label="Chercher la ville du logement" area="troyes-2h" placeholder="Tape une commune autour de Troyes…" value={city} onChange={setCity} />
           </div>
           <div>
             <span className={label}>Places adultes nécessaires</span>
@@ -156,6 +158,7 @@ export function AccommodationMarketplace() {
               {adultChoices.map((count) => <option key={count} value={count}>{count} adulte{count > 1 ? "s" : ""}</option>)}
             </select>
           </div>
+          <div><span className={label}>Enfants de plus de 6 ans</span><select className={field} value={childrenOverSix} onChange={(e) => setChildrenOverSix(Number(e.target.value))}>{Array.from({length: 8}, (_, count) => <option key={count} value={count}>{count} enfant{count > 1 ? "s" : ""}</option>)}</select></div>
           <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/60 px-3 py-2.5 text-sm">
             <input type="checkbox" checked={childrenOnly} onChange={(e) => setChildrenOnly(e.target.checked)} />
             <span>👶 Enfants acceptés</span>
@@ -200,7 +203,7 @@ export function AccommodationMarketplace() {
                         </span>
                       </div>
                       <p className="mt-1 text-sm text-[#5B4549]">
-                        Proposé par <strong>{genderEmoji(acc.genre_proposant)} {acc.propose_par || acc.contact || "Un invité"}</strong>
+                        Proposé par <strong>{genderEmoji(acc.genre_proposant)} {acc.propose_par ? ownerFirstNames(acc.propose_par, acc.genre_proposant) : acc.contact || "Un invité"}</strong>
                       </p>
                     </div>
                     <div className="shrink-0 rounded-xl bg-[#6D1925] px-3 py-2 text-center text-[#FFF7E9]">
@@ -276,7 +279,7 @@ export function AccommodationMarketplace() {
           acc={bookingAcc}
           initialArrival={arrival || bookingAcc.date_entree || "2026-12-30"}
           initialDeparture={departure || bookingAcc.date_sortie || "2027-01-01"}
-          initialPeople={people}
+          initialPeople={people + childrenOverSix}
           onClose={() => setBookingAcc(null)}
         />
       )}
@@ -312,6 +315,7 @@ function AccommodationForm({
 }) {
   const [saving, setSaving] = useState(false)
   const [occupants, setOccupants] = useState<NamedPerson[]>([])
+  const [owners, setOwners] = useState(emptyOwnerNames)
   const [form, setForm] = useState({
     propose_par: "",
     genre_proposant: "femme" as Gender,
@@ -339,12 +343,12 @@ function AccommodationForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.propose_par.trim() || !isFrenchPhone(form.telephone_proposant) || !form.email_proposant.trim() || !form.nom.trim() || !form.adresse.trim()) {
-      toast.error("Merci de compléter le nom, le téléphone, l’email, le logement et l’adresse.")
+    if (!ownerIsComplete(form.genre_proposant, owners) || !isFrenchPhone(form.telephone_proposant) || !form.email_proposant.trim() || !form.ville_logement.trim()) {
+      toast.error("Indique les prénoms et noms des propriétaires, le téléphone, l’email et la ville.")
       return
     }
-    if (!isListedCity(form.ville_logement, "idf-aube")) {
-      toast.error("Choisissez la ville du logement dans la liste (Aube ou Île-de-France).")
+    if (!form.ville_logement.trim()) {
+      toast.error("Indique la ville du logement près de Troyes.")
       return
     }
     if (form.date_sortie <= form.date_entree) {
@@ -357,10 +361,13 @@ function AccommodationForm({
       const groupToken = crypto.randomUUID()
       const offerId = await saveAccommodation({
         ...form,
+        propose_par: ownerFullNames(form.genre_proposant, owners),
+        nom: `Hébergement de ${ownerFirstNames(ownerFullNames(form.genre_proposant, owners), form.genre_proposant)}`,
+        adresse: form.adresse.trim() || null,
         compagnons_prenoms: occupants.map(personLabel).join(", "),
         group_manage_token: groupToken,
         capacite: form.places_disponibles,
-        contact: form.propose_par,
+        contact: ownerFullNames(form.genre_proposant, owners),
         source,
         actif: true,
       })
@@ -389,13 +396,11 @@ function AccommodationForm({
 
       <form onSubmit={submit} className="grid gap-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field title="Votre prénom / nom *">
-            <input className={field} value={form.propose_par} onChange={(e) => set("propose_par", e.target.value)} />
-          </Field>
           <Field title="Vous êtes *">
             <select className={field} value={form.genre_proposant} onChange={(e) => set("genre_proposant", e.target.value as Gender)}>
               <option value="femme">👩 Femme</option>
               <option value="homme">👨 Homme</option>
+              <option value="homme_et_femme">👫 Homme et femme</option>
             </select>
           </Field>
           <Field title="Téléphone *">
@@ -406,10 +411,8 @@ function AccommodationForm({
           </Field>
         </div>
 
+        <OwnerFields gender={form.genre_proposant} names={owners} onChange={setOwners} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field title="Nom du logement *">
-            <input className={field} placeholder="Ex. Maison de Michel" value={form.nom} onChange={(e) => set("nom", e.target.value)} />
-          </Field>
           <Field title="Type">
             <select className={field} value={form.type} onChange={(e) => set("type", e.target.value as AccommodationType)}>
               {ACCOMMODATION_TYPES.map((type) => <option key={type}>{type}</option>)}
@@ -420,11 +423,11 @@ function AccommodationForm({
         <NamedPeople title="Adultes et enfants qui logent déjà avec vous (prénom et nom)" value={occupants} onChange={setOccupants} />
         <InterestChoices value={form.centres_interet} onChange={(values) => set("centres_interet", values)} />
 
-        <Field title="Adresse exacte *">
+        <Field title="Adresse exacte (facultatif)">
           <AddressPicker className={field} label="Adresse exacte du logement" city={form.ville_logement} value={form.adresse} onChange={(value) => set("adresse", value)} />
         </Field>
 
-        <div><span className={label}>Ville du logement (Aube ou Île-de-France) *</span><CityPicker className={field} label="Ville du logement" area="idf-aube" placeholder="Tapez une ville…" value={form.ville_logement} onChange={(value) => set("ville_logement", value)} /></div>
+        <div><span className={label}>Ville du logement (autour de Troyes) *</span><CityPicker className={field} label="Ville du logement" area="troyes-2h" placeholder="Tape une ville…" value={form.ville_logement} onChange={(value) => set("ville_logement", value)} /></div>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <Field title="Places adultes disponibles *">
