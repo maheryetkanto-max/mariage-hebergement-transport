@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, Car, Clock3, ExternalLink, MapPin, MessageCircle, Phone, Plus, Search, X } from "lucide-react"
+import { CalendarDays, Car, Clock3, ExternalLink, MapPin, MessageCircle, Plus, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import { reserveVehicle, saveVehicle, useVehicles } from "@/lib/data"
 import { OUTBOUND_DATES, RETURN_DATES, type Gender, type TransportType, type Vehicle } from "@/lib/types"
@@ -152,7 +152,6 @@ export function TransportMarketplace() {
           {filtered.map((veh) => {
             const places = veh.places_disponibles ?? veh.places
             const mapHref = veh.lieu_depart ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(veh.lieu_depart) : undefined
-            const phoneHref = veh.telephone ? "tel:" + veh.telephone.replace(/\s/g, "") : undefined
             return (
               <article key={veh.id} className="overflow-hidden rounded-2xl border border-[#6D1925]/10 bg-white shadow-[0_8px_30px_rgba(109,25,37,0.06)]">
                 <div className="border-b border-[#6D1925]/8 bg-[#FFF7E9]/55 p-5">
@@ -204,14 +203,7 @@ export function TransportMarketplace() {
                     <Sticker>{veh.gratuit ? "🎁 Gratuit" : "💶 " + Number(veh.participation || 0).toFixed(0) + " € / pers."}</Sticker>
                   </div>
 
-                  <div className="flex items-center justify-between gap-3 border-t border-[#6D1925]/8 pt-4">
-                    <p className="text-xs text-[#6D1925]/55">Contactez directement {veh.conducteur} pour vous organiser.</p>
-                    {veh.telephone && (
-                      <a href={phoneHref} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-[#6D1925]/20 px-3.5 py-2 text-sm font-semibold text-[#6D1925]">
-                        <Phone className="h-4 w-4" /> {veh.telephone}
-                      </a>
-                    )}
-                  </div>
+                  <p className="border-t border-[#6D1925]/8 pt-4 text-xs text-[#6D1925]/65">Les coordonnées du conducteur s’affichent après confirmation de votre place.</p>
 
                   <button
                     type="button"
@@ -222,8 +214,8 @@ export function TransportMarketplace() {
                     {places < 1
                       ? "Complet"
                       : !veh.reservation_active
-                        ? "Réservation en ligne indisponible"
-                        : "Réserver ce transport"}
+                        ? "Coordonnées indisponibles"
+                        : "Confirmer ma place"}
                   </button>
 
                   {veh.commentaires && <p className="rounded-xl bg-[#6D1925]/[0.035] p-3 text-xs leading-5 text-[#5B4549]">{veh.commentaires}</p>}
@@ -425,7 +417,7 @@ function TransportReservationDialog({
   onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
-  const [confirmation, setConfirmation] = useState<{ emailSent: boolean; whatsappUrl: string | null } | null>(null)
+  const [confirmation, setConfirmation] = useState<{ emailSent: boolean; cancellationUrl: string; whatsappUrl: string | null; providerContact: { name: string | null; phone: string | null; email: string | null; address: string | null } | null } | null>(null)
   const [form, setForm] = useState({
     nom: "",
     email: "",
@@ -462,11 +454,11 @@ function TransportReservationDialog({
         consentement: form.consentement,
       })
       if (result.emailSent) {
-        toast.success("Réservation confirmée. Les deux fiches de contact ont été envoyées par email.")
+        toast.success("Place confirmée : le nombre de places disponibles a été mis à jour.")
       } else {
-        toast.warning("Réservation confirmée, mais l’envoi des emails n’a pas abouti. Les organisateurs pourront le relancer.")
+        toast.warning("Place confirmée. La notification par email n’a pas abouti.")
       }
-      setConfirmation({ emailSent: result.emailSent, whatsappUrl: result.whatsappUrl })
+      setConfirmation({ emailSent: result.emailSent, cancellationUrl: `/annuler?reservation=${encodeURIComponent(result.reservationId)}&code=${encodeURIComponent(result.emailToken)}`, whatsappUrl: result.whatsappUrl, providerContact: result.providerContact })
     } catch (error) {
       console.error(error)
       const message = error instanceof Error ? error.message : ""
@@ -507,7 +499,9 @@ function TransportReservationDialog({
         {confirmation ? (
           <div className="mt-5 grid gap-4 rounded-2xl border border-[#6D1925]/10 bg-white/75 p-5">
             <h3 className="font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée</h3>
-            <p className="text-sm text-[#5B4549]">{confirmation.emailSent ? "Les coordonnées ont été envoyées par email aux deux personnes." : "Les emails n’ont pas abouti ; les organisateurs pourront les relancer."}</p>
+            <p className="text-sm text-[#5B4549]">{confirmation.emailSent ? "Votre place est décomptée. Vous pouvez contacter la personne ci-dessous." : "Votre place est décomptée. Vous pouvez contacter la personne ci-dessous ; la notification par email a échoué."}</p>
+            {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]"><p className="font-semibold">Contact : {confirmation.providerContact.name}</p>{confirmation.providerContact.phone && <a className="block underline" href={`tel:${confirmation.providerContact.phone}`}>{confirmation.providerContact.phone}</a>}{confirmation.providerContact.email && <a className="block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}{confirmation.providerContact.address && <p>{confirmation.providerContact.address}</p>}</div>}
+            <a href={confirmation.cancellationUrl} className="text-sm font-semibold underline text-[#6D1925]">Conserver mon lien pour annuler cette place si besoin</a>
             {confirmation.whatsappUrl && <a href={confirmation.whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-[#10351d]"><MessageCircle className="h-5 w-5" /> Rejoindre le groupe WhatsApp</a>}
             <button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-[#6D1925]/20 px-4 text-sm font-semibold text-[#6D1925]">Fermer</button>
           </div>
