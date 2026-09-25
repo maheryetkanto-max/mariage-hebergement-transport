@@ -28,8 +28,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-[#6D1925]/10 bg-[#FFF7E9]/95 backdrop-blur">
         <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href="/" className="shrink-0">
-            <p className="font-serif text-xl font-semibold leading-none text-[#6D1925]">Mahery & Kanto</p>
-            <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-[#6D1925]/45">Hébergement & transport</p>
+            <p className="font-serif text-2xl font-semibold leading-none sm:text-3xl text-[#6D1925]">Mahery & Kanto</p>
+            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.13em] sm:text-sm text-[#6D1925]/45">Hébergement & transport</p>
           </Link>
           <nav className="flex items-center gap-1">
             {NAV.map((item) => {
