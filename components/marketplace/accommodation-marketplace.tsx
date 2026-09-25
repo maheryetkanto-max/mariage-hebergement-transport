@@ -49,6 +49,7 @@ function genderEmoji(gender: Gender | null) {
 export function AccommodationMarketplace() {
   const { data: accommodations = [], isLoading } = useAccommodations()
   const [showForm, setShowForm] = useState(false)
+  const [offerSource, setOfferSource] = useState<"invite" | "admin">("invite")
   const [arrival, setArrival] = useState("")
   const [departure, setDeparture] = useState("")
   const [people, setPeople] = useState(1)
@@ -56,7 +57,9 @@ export function AccommodationMarketplace() {
   const [petsOnly, setPetsOnly] = useState(false)
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("action") === "add") setShowForm(true)
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("action") === "add") setShowForm(true)
+    if (params.get("source") === "admin") setOfferSource("admin")
   }, [])
 
   const filtered = useMemo(
@@ -145,7 +148,7 @@ export function AccommodationMarketplace() {
         </div>
       </section>
 
-      {showForm && <AccommodationForm onClose={() => setShowForm(false)} />}
+      {showForm && <AccommodationForm onClose={() => setShowForm(false)} source={offerSource} />}
 
       {isLoading ? (
         <p className="py-10 text-center text-sm text-muted-foreground">Chargement des logements…</p>
@@ -269,7 +272,13 @@ function Sticker({ children }: { children: React.ReactNode }) {
   )
 }
 
-function AccommodationForm({ onClose }: { onClose: () => void }) {
+function AccommodationForm({
+  onClose,
+  source,
+}: {
+  onClose: () => void
+  source: "invite" | "admin"
+}) {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     propose_par: "",
@@ -307,7 +316,7 @@ function AccommodationForm({ onClose }: { onClose: () => void }) {
         ...form,
         capacite: form.places_disponibles,
         contact: form.propose_par,
-        source: "invite",
+        source,
         actif: true,
       })
       toast.success("Votre logement a bien été ajouté.")
