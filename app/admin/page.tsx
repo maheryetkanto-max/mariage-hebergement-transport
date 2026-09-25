@@ -19,6 +19,7 @@ import {
   adminDeleteAccommodation,
   adminDeleteVehicle,
   adminListReservations,
+  adminOfferEmails,
   adminPatchAccommodation,
   adminPatchVehicle,
   organizerHasPassword,
@@ -223,11 +224,21 @@ function AdminDashboard({ password, onLogout }: { password: string; onLogout: ()
   const { data: vehicles = [], isLoading: loadingVeh } = useVehicles()
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [loadingReservations, setLoadingReservations] = useState(true)
+  const [accommodationEmails, setAccommodationEmails] = useState<Record<string, string>>({})
+  const [vehicleEmails, setVehicleEmails] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    adminListReservations(password)
-      .then(setReservations)
-      .catch(() => toast.error("Impossible de charger les réservations."))
+    Promise.all([adminListReservations(password), adminOfferEmails(password)])
+      .then(([reservationRows, contacts]) => {
+        setReservations(reservationRows)
+        setAccommodationEmails(
+          Object.fromEntries(contacts.accommodations.map((item) => [item.id, item.email ?? ""])),
+        )
+        setVehicleEmails(
+          Object.fromEntries(contacts.vehicles.map((item) => [item.id, item.email ?? ""])),
+        )
+      })
+      .catch(() => toast.error("Impossible de charger toutes les données du back-office."))
       .finally(() => setLoadingReservations(false))
   }, [password])
 
@@ -331,7 +342,12 @@ function AdminDashboard({ password, onLogout }: { password: string; onLogout: ()
         ) : (
           <div className="grid gap-3">
             {accommodations.map((acc) => (
-              <AccommodationAdminRow key={acc.id} acc={acc} password={password} />
+              <AccommodationAdminRow
+                key={acc.id}
+                acc={acc}
+                password={password}
+                privateEmail={accommodationEmails[acc.id] ?? ""}
+              />
             ))}
           </div>
         )}
@@ -352,7 +368,12 @@ function AdminDashboard({ password, onLogout }: { password: string; onLogout: ()
         ) : (
           <div className="grid gap-3">
             {vehicles.map((veh) => (
-              <VehicleAdminRow key={veh.id} veh={veh} password={password} />
+              <VehicleAdminRow
+                key={veh.id}
+                veh={veh}
+                password={password}
+                privateEmail={vehicleEmails[veh.id] ?? ""}
+              />
             ))}
           </div>
         )}
@@ -361,7 +382,15 @@ function AdminDashboard({ password, onLogout }: { password: string; onLogout: ()
   )
 }
 
-function AccommodationAdminRow({ acc, password }: { acc: Accommodation; password: string }) {
+function AccommodationAdminRow({
+  acc,
+  password,
+  privateEmail,
+}: {
+  acc: Accommodation
+  password: string
+  privateEmail: string
+}) {
   const [form, setForm] = useState({
     nom: acc.nom,
     type: acc.type,
@@ -369,7 +398,7 @@ function AccommodationAdminRow({ acc, password }: { acc: Accommodation; password
     propose_par: acc.propose_par ?? acc.contact ?? "",
     genre_proposant: (acc.genre_proposant ?? "femme") as Gender,
     telephone_proposant: acc.telephone_proposant ?? "",
-    email_proposant: acc.email_proposant ?? "",
+    email_proposant: privateEmail,
     places_disponibles: acc.places_disponibles ?? acc.capacite,
     minutes_salle: acc.minutes_salle ?? 0,
     date_entree: acc.date_entree ?? "2026-12-30",
@@ -495,12 +524,20 @@ function AccommodationAdminRow({ acc, password }: { acc: Accommodation; password
   )
 }
 
-function VehicleAdminRow({ veh, password }: { veh: Vehicle; password: string }) {
+function VehicleAdminRow({
+  veh,
+  password,
+  privateEmail,
+}: {
+  veh: Vehicle
+  password: string
+  privateEmail: string
+}) {
   const [form, setForm] = useState({
     conducteur: veh.conducteur,
     genre_conducteur: (veh.genre_conducteur ?? "femme") as Gender,
     telephone: veh.telephone ?? "",
-    email_conducteur: veh.email_conducteur ?? "",
+    email_conducteur: privateEmail,
     type_trajet: (veh.type_trajet ?? "trajet") as TransportType,
     ville_depart: veh.ville_depart ?? "",
     lieu_depart: veh.lieu_depart ?? "",
