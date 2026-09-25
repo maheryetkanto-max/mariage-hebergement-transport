@@ -5,6 +5,11 @@ import { CalendarDays, Car, Clock3, ExternalLink, MapPin, MessageCircle, Phone, 
 import { toast } from "sonner"
 import { reserveVehicle, saveVehicle, useVehicles } from "@/lib/data"
 import { OUTBOUND_DATES, RETURN_DATES, type Gender, type TransportType, type Vehicle } from "@/lib/types"
+import { CityPicker, isListedCity, normalizeCity } from "@/components/marketplace/city-picker"
+
+const adultChoices = [1, 2, 3, 4, 5, 6, 7]
+const CHURCH = "Église protestante Unie de Troyes"
+const VENUE = "Clos Belair"
 
 const field = "w-full rounded-xl border border-[#6D1925]/15 bg-white/75 px-3 py-2.5 text-sm text-[#34171C] outline-none transition focus:border-[#6D1925]/45 focus:ring-2 focus:ring-[#6D1925]/10"
 const label = "mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6D1925]/70"
@@ -16,17 +21,18 @@ function dateLabel(value: string | null) {
 }
 
 function genderEmoji(gender: Gender | null) {
-  return gender === "femme" ? "👩" : gender === "homme" ? "👨" : "🙂"
+  return gender === "femme" ? "👩" : gender === "homme" ? "👨" : gender === "homme_et_femme" ? "👫" : "🙂"
 }
 
 export function TransportMarketplace() {
   const { data: vehicles = [], isLoading } = useVehicles()
   const [showForm, setShowForm] = useState(false)
   const [offerSource, setOfferSource] = useState<"invite" | "admin">("invite")
-  const [type, setType] = useState<"" | TransportType>("")
+  const [type, setType] = useState<"" | "church" | "venue" | "navette">("")
   const [date, setDate] = useState("")
   const [returnDate, setReturnDate] = useState("")
   const [city, setCity] = useState("")
+  const [arrivalCity, setArrivalCity] = useState("")
   const [people, setPeople] = useState(1)
   const [gender, setGender] = useState<"" | Gender>("")
   const [freeOnly, setFreeOnly] = useState(false)
@@ -39,19 +45,25 @@ export function TransportMarketplace() {
     if (params.get("source") === "admin") setOfferSource("admin")
   }, [])
 
+  useEffect(() => {
+    if (showForm) document.getElementById("proposer")?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, [showForm])
+
   const filtered = useMemo(() => {
-    const q = city.trim().toLowerCase()
+    const q = normalizeCity(city)
+    const returnQuery = normalizeCity(arrivalCity)
     return vehicles
       .filter((v) => v.actif !== false)
       .filter((v) => (v.places_disponibles ?? v.places) >= people)
-      .filter((v) => !type || v.type_trajet === type)
+      .filter((v) => !type || (type === "navette" ? v.type_trajet === "navette" : type === "church" ? normalizeCity(v.destination ?? "").includes("eglise") : normalizeCity(v.destination ?? "").includes("salle") || normalizeCity(v.destination ?? "").includes("clos belair")))
       .filter((v) => !date || v.date_depart === date)
       .filter((v) => !returnDate || v.date_retour === returnDate)
       .filter((v) => !gender || v.genre_conducteur === gender)
       .filter((v) => !freeOnly || v.gratuit)
       .filter((v) => !petsOnly || v.animaux_acceptes)
-      .filter((v) => !q || ((v.ville_depart ?? "") + " " + (v.lieu_depart ?? "")).toLowerCase().includes(q))
-  }, [vehicles, type, date, returnDate, city, people, gender, freeOnly, petsOnly])
+      .filter((v) => !q || normalizeCity((v.ville_depart ?? "") + " " + (v.lieu_depart ?? "")).includes(q))
+      .filter((v) => !returnQuery || normalizeCity(v.retour_ville_arrivee ?? "").includes(returnQuery))
+  }, [vehicles, type, date, returnDate, city, arrivalCity, people, gender, freeOnly, petsOnly])
 
   return (
     <div className="space-y-6">
@@ -74,11 +86,12 @@ export function TransportMarketplace() {
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#6D1925]"><Search className="h-4 w-4" /> Trouver une place</div>
         <div className="grid gap-3 md:grid-cols-5">
           <div>
-            <span className={label}>Type</span>
-            <select className={field} value={type} onChange={(e) => setType(e.target.value as "" | TransportType)}>
+            <span className={label}>Destination de l’aller</span>
+            <select className={field} value={type} onChange={(e) => setType(e.target.value as typeof type)}>
               <option value="">Tous</option>
-              <option value="trajet">🚗 Trajet vers le mariage</option>
-              <option value="navette">🚉 Navette locale / gare</option>
+              <option value="church">Île-de-France → Église</option>
+              <option value="venue">Île-de-France → Clos Belair</option>
+              <option value="navette">Navette locale</option>
             </select>
           </div>
           <div>
@@ -96,19 +109,23 @@ export function TransportMarketplace() {
             </select>
           </div>
           <div>
-            <span className={label}>Ville / zone</span>
-            <input className={field} placeholder="Ex. Massy, Paris, Troyes…" value={city} onChange={(e) => setCity(e.target.value)} />
+            <span className={label}>Ville de départ (Île-de-France)</span>
+            <CityPicker className={field} label="Chercher une ville de départ" area="idf" placeholder="Tapez une ville…" value={city} onChange={setCity} />
           </div>
           <div>
-            <span className={label}>Places nécessaires</span>
-            <input className={field} type="number" min={1} value={people} onChange={(e) => setPeople(Math.max(1, Number(e.target.value) || 1))} />
+            <span className={label}>Places adultes nécessaires</span>
+            <select className={field} value={people} onChange={(e) => setPeople(Number(e.target.value))}>
+              {adultChoices.map((count) => <option key={count} value={count}>{count} adulte{count > 1 ? "s" : ""}</option>)}
+            </select>
           </div>
         </div>
+        {returnDate && <div className="mt-3 max-w-sm"><span className={label}>Ville de dépose au retour (Île-de-France)</span><CityPicker className={field} label="Chercher la ville de dépose au retour" area="idf" placeholder="Tapez une ville…" value={arrivalCity} onChange={setArrivalCity} /></div>}
         <div className="mt-3 flex flex-wrap gap-2">
           <select className="rounded-full border border-[#6D1925]/10 bg-[#FFF7E9] px-3 py-1.5 text-xs" value={gender} onChange={(e) => setGender(e.target.value as "" | Gender)}>
-            <option value="">👤 Conducteur : peu importe</option>
+            <option value="">👤 Propriétaire : peu importe</option>
             <option value="femme">👩 Femme</option>
             <option value="homme">👨 Homme</option>
+            <option value="homme_et_femme">👫 Homme et femme</option>
           </select>
           <label className="flex cursor-pointer items-center gap-2 rounded-full border border-[#6D1925]/10 bg-[#FFF7E9] px-3 py-1.5 text-xs">
             <input type="checkbox" checked={freeOnly} onChange={(e) => setFreeOnly(e.target.checked)} /> Gratuit uniquement
@@ -119,7 +136,7 @@ export function TransportMarketplace() {
         </div>
       </section>
 
-      {showForm && <TransportForm onClose={() => setShowForm(false)} source={offerSource} />}
+      {showForm && <TransportForm onClose={() => setShowForm(false)} onPublished={() => { setShowForm(false); setType(""); setDate(""); setReturnDate(""); setCity(""); setArrivalCity(""); setPeople(1); setGender(""); setFreeOnly(false); setPetsOnly(false); window.setTimeout(() => document.getElementById("transport-offers")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30) }} source={offerSource} />}
 
       {isLoading ? (
         <p className="py-10 text-center text-sm text-muted-foreground">Chargement des transports…</p>
@@ -128,9 +145,10 @@ export function TransportMarketplace() {
           <Car className="mx-auto mb-3 h-9 w-9 text-[#6D1925]/35" />
           <p className="font-medium text-[#4B242B]">Aucun transport ne correspond à ces critères.</p>
           <p className="mt-1 text-sm text-[#6D1925]/55">Essayez une autre date, ville ou zone.</p>
+          <button type="button" onClick={() => { setType(""); setDate(""); setReturnDate(""); setCity(""); setArrivalCity(""); setPeople(1); setGender(""); setFreeOnly(false); setPetsOnly(false) }} className="mt-4 min-h-11 rounded-xl border border-[#6D1925]/25 bg-white px-4 text-sm font-semibold text-[#6D1925]">Afficher tous les transports</button>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div id="transport-offers" className="grid scroll-mt-20 gap-4 lg:grid-cols-2">
           {filtered.map((veh) => {
             const places = veh.places_disponibles ?? veh.places
             const mapHref = veh.lieu_depart ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(veh.lieu_depart) : undefined
@@ -142,9 +160,7 @@ export function TransportMarketplace() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 className="font-serif text-2xl font-semibold text-[#6D1925]">{genderEmoji(veh.genre_conducteur)} {veh.conducteur}</h2>
-                        <span className="rounded-full border border-[#6D1925]/15 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#6D1925]/70">
-                          {veh.type_trajet === "navette" ? "🚉 Navette locale" : "🚗 Covoiturage"}
-                        </span>
+                        <span className="rounded-full border border-[#6D1925]/15 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#6D1925]/70">{veh.type_trajet === "navette" ? "🚉 Navette locale" : "🚗 Covoiturage"}</span>
                       </div>
                       <p className="mt-1 text-sm text-[#5B4549]">
                         {veh.gratuit ? <strong className="text-emerald-700">Gratuit</strong> : <strong>{Number(veh.participation || 0).toFixed(0)} € / personne</strong>}
@@ -178,11 +194,12 @@ export function TransportMarketplace() {
                   {veh.date_retour && (
                     <div className="rounded-xl bg-[#6D1925]/[0.035] px-3 py-2.5 text-sm text-[#5B4549]">
                       Retour : <strong>{dateLabel(veh.date_retour)}</strong>{veh.heure_retour ? " à " + veh.heure_retour : ""}
+                      {(veh.retour_lieu_depart || veh.retour_ville_arrivee) && <p className="mt-1">{veh.retour_lieu_depart || VENUE} → {veh.retour_ville_arrivee || "Île-de-France"}</p>}
                     </div>
                   )}
 
                   <div className="flex flex-wrap gap-2">
-                    <Sticker>{genderEmoji(veh.genre_conducteur)} {veh.genre_conducteur === "femme" ? "Conductrice" : "Conducteur"}</Sticker>
+                    <Sticker>{genderEmoji(veh.genre_conducteur)} {veh.genre_conducteur === "femme" ? "Conductrice" : veh.genre_conducteur === "homme_et_femme" ? "Propriétaires" : "Conducteur"}</Sticker>
                     <Sticker>{veh.animaux_acceptes ? "🐶 Animaux OK" : "🚫🐶 Sans animaux"}</Sticker>
                     <Sticker>{veh.gratuit ? "🎁 Gratuit" : "💶 " + Number(veh.participation || 0).toFixed(0) + " € / pers."}</Sticker>
                   </div>
@@ -240,12 +257,15 @@ function Sticker({ children }: { children: React.ReactNode }) {
 
 function TransportForm({
   onClose,
+  onPublished,
   source,
 }: {
   onClose: () => void
+  onPublished: () => void
   source: "invite" | "admin"
 }) {
   const [saving, setSaving] = useState(false)
+  const [returnFromAccommodation, setReturnFromAccommodation] = useState(false)
   const [form, setForm] = useState({
     conducteur: "",
     genre_conducteur: "femme" as Gender,
@@ -255,11 +275,13 @@ function TransportForm({
     type_trajet: "trajet" as TransportType,
     ville_depart: "",
     lieu_depart: "",
-    destination: "Salle de réception",
+    destination: VENUE,
     date_depart: "2026-12-31",
     heure_depart: "",
     date_retour: "",
     heure_retour: "",
+    retour_lieu_depart: VENUE,
+    retour_ville_arrivee: "",
     places_disponibles: 1,
     gratuit: true,
     participation: 0,
@@ -271,8 +293,24 @@ function TransportForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.conducteur.trim() || !form.telephone.trim() || !form.email_conducteur.trim() || !form.lieu_depart.trim() || !form.heure_depart) {
-      toast.error("Merci de compléter le conducteur, le téléphone, l’email, l’adresse et l’heure de départ.")
+    if (!form.conducteur.trim() || !form.telephone.trim() || !form.email_conducteur.trim() || !form.ville_depart.trim() || !form.lieu_depart.trim() || !form.heure_depart) {
+      toast.error("Merci de compléter le nom, le téléphone, l’email, la ville, le lieu et l’heure de départ.")
+      return
+    }
+    if (!isListedCity(form.ville_depart, "idf") || (form.date_retour && !isListedCity(form.retour_ville_arrivee, "idf"))) {
+      toast.error("Choisissez une ville d’Île-de-France dans la liste pour l’aller et le retour.")
+      return
+    }
+    if (form.date_retour && returnFromAccommodation && !isListedCity(form.retour_lieu_depart, "aube")) {
+      toast.error("Choisissez la ville de l’hébergement dans l’Aube pour le retour.")
+      return
+    }
+    if (form.heure_depart && !/^(?:[01]\d|2[0-3]):(?:00|15|30|45)$/.test(form.heure_depart)) {
+      toast.error("Choisissez une heure de départ par tranche de 15 minutes.")
+      return
+    }
+    if (form.heure_retour && !/^(?:[01]\d|2[0-3]):(?:00|15|30|45)$/.test(form.heure_retour)) {
+      toast.error("Choisissez une heure de retour par tranche de 15 minutes.")
       return
     }
     if (form.whatsapp_group_url && !/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+$/.test(form.whatsapp_group_url.trim())) {
@@ -281,9 +319,9 @@ function TransportForm({
     }
     setSaving(true)
     try {
-      await saveVehicle({ ...form, whatsapp_group_url: form.whatsapp_group_url.trim(), places: form.places_disponibles, source, actif: true })
+      await saveVehicle({ ...form, whatsapp_group_url: form.whatsapp_group_url.trim(), retour_lieu_depart: form.date_retour ? form.retour_lieu_depart : "", retour_ville_arrivee: form.date_retour ? form.retour_ville_arrivee : "", places: form.places_disponibles, source, actif: true })
       toast.success("Votre transport a bien été ajouté.")
-      onClose()
+      onPublished()
     } catch (error) {
       console.error(error)
       toast.error("Impossible d’ajouter le transport pour le moment.")
@@ -293,7 +331,7 @@ function TransportForm({
   }
 
   return (
-    <section id="proposer" className="rounded-3xl border border-[#6D1925]/15 bg-[#FFF7E9] p-5 shadow-lg sm:p-7">
+    <section id="proposer" className="scroll-mt-20 rounded-3xl border border-[#6D1925]/15 bg-[#FFF7E9] p-5 shadow-lg sm:p-7">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6D1925]/55">Partager une place</p>
@@ -305,29 +343,25 @@ function TransportForm({
 
       <form onSubmit={submit} className="grid gap-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field title="Prénom / nom *"><input className={field} value={form.conducteur} onChange={(e) => set("conducteur", e.target.value)} /></Field>
-          <Field title="Vous êtes *">
+          <Field title="Nom du conducteur / des propriétaires *"><input className={field} value={form.conducteur} onChange={(e) => set("conducteur", e.target.value)} /></Field>
+          <Field title="Propriétaire(s) du véhicule *">
             <select className={field} value={form.genre_conducteur} onChange={(e) => set("genre_conducteur", e.target.value as Gender)}>
               <option value="femme">👩 Femme</option><option value="homme">👨 Homme</option>
+              <option value="homme_et_femme">👫 Homme et femme</option>
             </select>
           </Field>
           <Field title="Téléphone *"><input className={field} type="tel" value={form.telephone} onChange={(e) => set("telephone", e.target.value)} /></Field>
           <Field title="Email *"><input className={field} type="email" value={form.email_conducteur} onChange={(e) => set("email_conducteur", e.target.value)} /></Field>
         </div>
 
-        <Field title="Type de transport">
-          <select className={field} value={form.type_trajet} onChange={(e) => set("type_trajet", e.target.value as TransportType)}>
-            <option value="trajet">🚗 Trajet vers le mariage / retour</option>
-            <option value="navette">🚉 Navette locale : gare, église, salle</option>
-          </select>
-        </Field>
+        <p className="text-sm font-medium text-[#6D1925]">🚗 Trajet d’Île-de-France vers le mariage</p>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field title="Ville / zone de départ"><input className={field} placeholder="Ex. Massy, Paris, Troyes…" value={form.ville_depart} onChange={(e) => set("ville_depart", e.target.value)} /></Field>
-          <Field title="Adresse exacte de prise en charge *"><input className={field} placeholder="Adresse ou gare précise" value={form.lieu_depart} onChange={(e) => set("lieu_depart", e.target.value)} /></Field>
+          <div><span className={label}>Ville de départ (Île-de-France) *</span><CityPicker className={field} label="Ville de départ" area="idf" placeholder="Tapez une ville…" value={form.ville_depart} onChange={(value) => set("ville_depart", value)} /></div>
+          <Field title="Lieu de départ précis *"><input className={field} placeholder="Adresse ou gare précise" value={form.lieu_depart} onChange={(e) => set("lieu_depart", e.target.value)} /></Field>
         </div>
 
-        <Field title="Destination / zone desservie"><input className={field} placeholder="Salle, église, gare de Troyes…" value={form.destination} onChange={(e) => set("destination", e.target.value)} /></Field>
+        <Field title="Lieu de dépose à l’aller *"><select className={field} value={form.destination} onChange={(e) => set("destination", e.target.value)}><option value={CHURCH}>{CHURCH}</option><option value={VENUE}>{VENUE} (salle de réception)</option></select></Field>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <Field title="Départ *">
@@ -335,8 +369,8 @@ function TransportForm({
               {OUTBOUND_DATES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
             </select>
           </Field>
-          <Field title="Heure de départ *"><input className={field} type="time" value={form.heure_depart} onChange={(e) => set("heure_depart", e.target.value)} /></Field>
-          <Field title="Places disponibles *"><input className={field} type="number" min={1} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Math.max(1, Number(e.target.value) || 1))} /></Field>
+          <Field title="Heure de départ *"><select className={field} value={form.heure_depart} onChange={(e) => set("heure_depart", e.target.value)}><option value="">Choisir une heure</option>{Array.from({ length: 96 }, (_, index) => { const value = `${String(Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}`; return <option key={value} value={value}>{value}</option> })}</select></Field>
+          <Field title="Places adultes disponibles *"><select className={field} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Number(e.target.value))}>{adultChoices.map((count) => <option key={count} value={count}>{count} place{count > 1 ? "s" : ""}</option>)}</select></Field>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -346,8 +380,10 @@ function TransportForm({
               {RETURN_DATES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
             </select>
           </Field>
-          <Field title="Heure de retour"><input className={field} type="time" value={form.heure_retour} onChange={(e) => set("heure_retour", e.target.value)} disabled={!form.date_retour} /></Field>
+          <Field title="Heure de retour"><select className={field} value={form.heure_retour} onChange={(e) => set("heure_retour", e.target.value)} disabled={!form.date_retour}><option value="">À préciser</option>{Array.from({ length: 96 }, (_, index) => { const value = `${String(Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}`; return <option key={value} value={value}>{value}</option> })}</select></Field>
         </div>
+
+        {form.date_retour && <div className="grid gap-4 sm:grid-cols-2"><div><Field title="Départ du retour *"><select className={field} value={returnFromAccommodation ? "hebergement" : "salle"} onChange={(e) => { const fromAccommodation = e.target.value === "hebergement"; setReturnFromAccommodation(fromAccommodation); set("retour_lieu_depart", fromAccommodation ? "" : VENUE) }}><option value="salle">{VENUE} (salle)</option><option value="hebergement">Ville de l’hébergement</option></select></Field>{returnFromAccommodation && <div className="mt-3"><span className={label}>Ville de l’hébergement (Aube) *</span><CityPicker className={field} label="Ville de l’hébergement au retour" area="aube" placeholder="Tapez une ville…" value={form.retour_lieu_depart} onChange={(value) => set("retour_lieu_depart", value)} /></div>}</div><div><span className={label}>Ville de dépose au retour (Île-de-France) *</span><CityPicker className={field} label="Ville de dépose au retour" area="idf" placeholder="Tapez une ville…" value={form.retour_ville_arrivee} onChange={(value) => set("retour_ville_arrivee", value)} /></div></div>}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex cursor-pointer items-center justify-between rounded-xl border border-[#6D1925]/10 bg-white/60 px-4 py-3 text-sm"><span>Transport gratuit 🎁</span><input type="checkbox" checked={form.gratuit} onChange={(e) => set("gratuit", e.target.checked)} /></label>

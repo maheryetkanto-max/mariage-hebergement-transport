@@ -1,5 +1,5 @@
 export type AccommodationType = "Airbnb" | "Hôtel" | "Maison" | "Appartement" | "Autre"
-export type Gender = "homme" | "femme"
+export type Gender = "homme" | "femme" | "homme_et_femme"
 export type TransportType = "trajet" | "navette"
 export type ReservationType = "accommodation" | "vehicle"
 export type ReservationStatus = "confirmee" | "annulee"
@@ -29,6 +29,7 @@ export interface Accommodation {
   nom: string
   type: AccommodationType
   adresse: string | null
+  ville_logement: string | null
   capacite: number
   contact: string | null
   commentaires: string | null
@@ -68,6 +69,8 @@ export interface Vehicle {
   date_depart: string | null
   date_retour: string | null
   heure_retour: string | null
+  retour_lieu_depart: string | null
+  retour_ville_arrivee: string | null
   places_disponibles: number
   gratuit: boolean
   participation: number

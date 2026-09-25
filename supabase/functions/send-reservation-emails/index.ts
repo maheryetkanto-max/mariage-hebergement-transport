@@ -207,7 +207,7 @@ Deno.serve(async (req: Request) => {
         ["Départ", `${esc(formatDate(offer.date_depart))}${offer.heure_depart ? " à " + esc(offer.heure_depart) : ""}`],
         ["Lieu", esc(offer.lieu_depart ?? offer.ville_depart ?? "—")],
         ["Destination", esc(offer.destination ?? "—")],
-        ["Retour", offer.date_retour ? `${esc(formatDate(offer.date_retour))}${offer.heure_retour ? " à " + esc(offer.heure_retour) : ""}` : "Non proposé"],
+        ["Retour", offer.date_retour ? `${esc(formatDate(offer.date_retour))}${offer.heure_retour ? " à " + esc(offer.heure_retour) : ""}${offer.retour_lieu_depart || offer.retour_ville_arrivee ? " · " + esc(offer.retour_lieu_depart ?? "Clos Belair") + " → " + esc(offer.retour_ville_arrivee ?? "Île-de-France") : ""}` : "Non proposé"],
         ["Places réservées", esc(reservation.nb_personnes)],
         ["Participation totale", Number(reservation.montant_total) === 0 ? "Gratuit" : `${Number(reservation.montant_total).toFixed(2)} €`],
         ["Carte", maps],
