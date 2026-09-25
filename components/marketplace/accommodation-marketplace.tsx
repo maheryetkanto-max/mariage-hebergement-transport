@@ -9,7 +9,6 @@ import {
   ExternalLink,
   MapPin,
   MessageCircle,
-  Phone,
   Plus,
   Search,
   Users,
@@ -209,18 +208,6 @@ export function AccommodationMarketplace() {
 
                   {acc.ville_logement && <p className="text-sm font-semibold text-[#6D1925]">📍 {acc.ville_logement}</p>}
 
-                  {acc.adresse && (
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(acc.adresse)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-start gap-2 rounded-xl bg-[#FFF7E9]/60 p-3 text-sm text-[#5B4549] transition hover:bg-[#FFF7E9]"
-                    >
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#6D1925]" />
-                      <span className="min-w-0 flex-1">{acc.adresse}</span>
-                      <ExternalLink className="h-4 w-4 shrink-0" />
-                    </a>
-                  )}
 
                   <div className="flex flex-wrap gap-2">
                     <Sticker>{acc.enfants_acceptes ? "👶 Enfants OK" : "🚫👶 Sans enfants"}</Sticker>
@@ -242,15 +229,6 @@ export function AccommodationMarketplace() {
                         </p>
                       )}
                     </div>
-                    {acc.telephone_proposant && (
-                      <a
-                        href={`tel:${acc.telephone_proposant.replace(/\s/g, "")}`}
-                        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#6D1925]/20 px-3.5 py-2 text-sm font-semibold text-[#6D1925]"
-                      >
-                        <Phone className="h-4 w-4" />
-                        {acc.telephone_proposant}
-                      </a>
-                    )}
                   </div>
 
                   <button
@@ -262,8 +240,8 @@ export function AccommodationMarketplace() {
                     {places < 1
                       ? "Complet"
                       : !acc.reservation_active
-                        ? "Réservation en ligne indisponible"
-                        : "Réserver ce logement"}
+                        ? "Coordonnées indisponibles"
+                        : "Confirmer ma place"}
                   </button>
 
                   {acc.commentaires && (
@@ -516,7 +494,7 @@ function AccommodationReservationDialog({
   onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
-  const [confirmation, setConfirmation] = useState<{ emailSent: boolean; whatsappUrl: string | null } | null>(null)
+  const [confirmation, setConfirmation] = useState<{ emailSent: boolean; cancellationUrl: string; whatsappUrl: string | null; providerContact: { name: string | null; phone: string | null; email: string | null; address: string | null } | null } | null>(null)
   const [form, setForm] = useState({
     nom: "",
     email: "",
@@ -564,11 +542,11 @@ function AccommodationReservationDialog({
         consentement: form.consentement,
       })
       if (result.emailSent) {
-        toast.success("Réservation confirmée. Les deux fiches de contact ont été envoyées par email.")
+        toast.success("Place confirmée : le nombre de places disponibles a été mis à jour.")
       } else {
-        toast.warning("Réservation confirmée, mais l’envoi des emails n’a pas abouti. Les organisateurs pourront le relancer.")
+        toast.warning("Place confirmée. La notification par email n’a pas abouti.")
       }
-      setConfirmation({ emailSent: result.emailSent, whatsappUrl: result.whatsappUrl })
+      setConfirmation({ emailSent: result.emailSent, cancellationUrl: `/annuler?reservation=${encodeURIComponent(result.reservationId)}&code=${encodeURIComponent(result.emailToken)}`, whatsappUrl: result.whatsappUrl, providerContact: result.providerContact })
     } catch (error) {
       console.error(error)
       const message = error instanceof Error ? error.message : ""
@@ -599,7 +577,9 @@ function AccommodationReservationDialog({
         {confirmation ? (
           <div className="mt-5 grid gap-4 rounded-2xl border border-[#6D1925]/10 bg-white/75 p-5">
             <h3 className="font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée</h3>
-            <p className="text-sm text-[#5B4549]">{confirmation.emailSent ? "Les coordonnées ont été envoyées par email aux deux personnes." : "Les emails n’ont pas abouti ; les organisateurs pourront les relancer."}</p>
+            <p className="text-sm text-[#5B4549]">{confirmation.emailSent ? "Votre place est décomptée. Vous pouvez contacter la personne ci-dessous." : "Votre place est décomptée. Vous pouvez contacter la personne ci-dessous ; la notification par email a échoué."}</p>
+            {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]"><p className="font-semibold">Contact : {confirmation.providerContact.name}</p>{confirmation.providerContact.phone && <a className="block underline" href={`tel:${confirmation.providerContact.phone}`}>{confirmation.providerContact.phone}</a>}{confirmation.providerContact.email && <a className="block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}{confirmation.providerContact.address && <p>{confirmation.providerContact.address}</p>}</div>}
+            <a href={confirmation.cancellationUrl} className="text-sm font-semibold underline text-[#6D1925]">Conserver mon lien pour annuler cette place si besoin</a>
             {confirmation.whatsappUrl && <a href={confirmation.whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-[#10351d]"><MessageCircle className="h-5 w-5" /> Rejoindre le groupe WhatsApp</a>}
             <button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-[#6D1925]/20 px-4 text-sm font-semibold text-[#6D1925]">Fermer</button>
           </div>

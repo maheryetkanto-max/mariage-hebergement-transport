@@ -32,7 +32,7 @@ async function fetchGuests(): Promise<Guest[]> {
 async function fetchAccommodations(): Promise<Accommodation[]> {
   const { data, error } = await supabase
     .from("accommodations")
-    .select("id,nom,type,adresse,ville_logement,capacite,contact,commentaires,propose_par,genre_proposant,telephone_proposant,places_disponibles,minutes_salle,date_entree,date_sortie,prix_personne_nuit,enfants_acceptes,animaux_acceptes,actif,source,reservation_active,created_at")
+    .select("id,nom,type,ville_logement,capacite,commentaires,propose_par,genre_proposant,places_disponibles,minutes_salle,date_entree,date_sortie,prix_personne_nuit,enfants_acceptes,animaux_acceptes,actif,source,reservation_active,created_at")
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as Accommodation[]
@@ -41,7 +41,7 @@ async function fetchAccommodations(): Promise<Accommodation[]> {
 async function fetchVehicles(): Promise<Vehicle[]> {
   const { data, error } = await supabase
     .from("vehicles")
-    .select("id,conducteur,telephone,lieu_depart,heure_depart,places,commentaires,genre_conducteur,type_trajet,ville_depart,destination,date_depart,date_retour,heure_retour,retour_lieu_depart,retour_ville_arrivee,places_disponibles,gratuit,participation,animaux_acceptes,actif,source,reservation_active,created_at")
+    .select("id,conducteur,heure_depart,places,commentaires,genre_conducteur,type_trajet,ville_depart,destination,date_depart,date_retour,heure_retour,retour_lieu_depart,retour_ville_arrivee,places_disponibles,gratuit,participation,animaux_acceptes,actif,source,reservation_active,created_at")
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as Vehicle[]
@@ -256,6 +256,15 @@ async function reservationWhatsappLink(reservationId: string, emailToken: string
   return typeof data === "string" ? data : null
 }
 
+async function reservationProviderContact(reservationId: string, emailToken: string) {
+  const { data, error } = await supabase.rpc("reservation_provider_contact", {
+    p_reservation_id: reservationId,
+    p_email_token: emailToken,
+  })
+  if (error) throw error
+  return data as { name: string | null; phone: string | null; email: string | null; address: string | null } | null
+}
+
 export async function reserveAccommodation(input: ReservationContact & {
   accommodationId: string
   dateEntree: string
@@ -289,7 +298,8 @@ export async function reserveAccommodation(input: ReservationContact & {
   }
 
   const whatsappUrl = await reservationWhatsappLink(reservationId, emailToken).catch(() => null)
-  return { reservationId, emailSent, whatsappUrl }
+  const providerContact = await reservationProviderContact(reservationId, emailToken).catch(() => null)
+  return { reservationId, emailToken, emailSent, whatsappUrl, providerContact }
 }
 
 export async function reserveVehicle(input: ReservationContact & {
@@ -321,7 +331,8 @@ export async function reserveVehicle(input: ReservationContact & {
   }
 
   const whatsappUrl = await reservationWhatsappLink(reservationId, emailToken).catch(() => null)
-  return { reservationId, emailSent, whatsappUrl }
+  const providerContact = await reservationProviderContact(reservationId, emailToken).catch(() => null)
+  return { reservationId, emailToken, emailSent, whatsappUrl, providerContact }
 }
 
 export async function organizerHasPassword() {
