@@ -217,6 +217,18 @@ export async function deleteVehicle(id: string) {
 }
 
 
+export async function organizerHasPassword() {
+  const { data, error } = await supabase.rpc("organizer_has_password")
+  if (error) throw error
+  return Boolean(data)
+}
+
+export async function setupOrganizerPassword(password: string) {
+  const { data, error } = await supabase.rpc("setup_organizer_password", { p_password: password })
+  if (error) throw error
+  return Boolean(data)
+}
+
 export async function verifyWeddingAdmin(password: string) {
   const { data, error } = await supabase.rpc("verify_wedding_admin", { p_password: password })
   if (error) throw error
