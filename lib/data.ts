@@ -41,7 +41,7 @@ async function fetchAccommodations(): Promise<Accommodation[]> {
 async function fetchVehicles(): Promise<Vehicle[]> {
   const { data, error } = await supabase
     .from("vehicles")
-    .select("id,conducteur,telephone,compagnons_prenoms,centres_interet,heure_depart,places,commentaires,genre_conducteur,type_trajet,ville_depart,destination,date_depart,date_retour,heure_retour,retour_lieu_depart,retour_ville_arrivee,places_disponibles,gratuit,participation,animaux_acceptes,actif,source,reservation_active,created_at")
+    .select("id,conducteur,telephone,compagnons_prenoms,centres_interet,heure_depart,places,commentaires,genre_conducteur,type_trajet,ville_depart,destination,date_depart,date_retour,heure_retour,retour_lieu_depart,retour_ville_arrivee,places_disponibles,places_retour_disponibles,gratuit,participation,animaux_acceptes,actif,source,reservation_active,created_at")
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as Vehicle[]
@@ -307,6 +307,7 @@ export async function reserveAccommodation(input: ReservationContact & {
     p_date_sortie: input.dateSortie,
     p_consentement_coordonnees: input.consentement,
     p_profile: input.profile,
+    p_trajet_sens: input.trajetSens,
   })
   if (error) throw error
 
@@ -332,9 +333,10 @@ export async function reserveAccommodation(input: ReservationContact & {
 
 export async function reserveVehicle(input: ReservationContact & {
   vehicleId: string
+  trajetSens: "aller" | "retour" | "aller-retour"
   profile: { origin: string; interests: string[]; companions: string[]; luggage?: "petit" | "moyen" | "gros" }
 }) {
-  const { data, error } = await supabase.rpc("reserve_vehicle_with_profile", {
+  const { data, error } = await supabase.rpc("reserve_vehicle_leg_with_profile", {
     p_vehicle_id: input.vehicleId,
     p_reserver_nom: input.nom,
     p_reserver_email: input.email,
