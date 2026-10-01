@@ -81,6 +81,7 @@ export interface Vehicle {
   retour_lieu_depart: string | null
   retour_ville_arrivee: string | null
   places_disponibles: number
+  places_retour_disponibles?: number | null
   gratuit: boolean
   participation: number
   animaux_acceptes: boolean

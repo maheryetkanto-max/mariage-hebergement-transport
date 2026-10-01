@@ -247,9 +247,12 @@ export function AccommodationMarketplace() {
                         Proposé par <strong>{genderEmoji(acc.genre_proposant)} {acc.propose_par || acc.contact || "Un invité"}</strong>
                       </p>
                     </div>
-                    <div className={"shrink-0 rounded-xl px-3 py-2 text-center text-[#FFF7E9] " + (places <= 4 && places > 0 ? "bg-[#8E2D18]" : "bg-[#6D1925]")}>
-                      {places <= 4 && places > 0 && (
-                        <div className="mb-1 text-[9px] font-bold uppercase tracking-wide">Bientôt plus disponible</div>
+                    <div className={"shrink-0 rounded-xl px-3 py-2 text-center text-[#FFF7E9] " + (places <= 4 && places > 0 ? "bg-[#8E2D18]" : places > 0 ? "bg-emerald-700" : "bg-[#6D1925]")}>
+                      {places > 0 && (
+                        <div className="mb-1 flex items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-wide">
+                          <span className="h-2 w-2 animate-pulse rounded-full bg-lime-300" />
+                          {places <= 4 ? "Bientôt plus disponible" : "Disponible"}
+                        </div>
                       )}
                       <div className="text-xl font-bold">{places}</div>
                       <div className="text-[10px] uppercase tracking-wide">

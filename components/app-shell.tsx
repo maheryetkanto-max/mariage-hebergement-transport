@@ -1,8 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BedDouble, Car, Globe2, Home, Play } from "lucide-react"
+import { BedDouble, Car, Globe2, Home, Pause, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const NAV = [
@@ -11,6 +12,48 @@ const NAV = [
   { href: "/transports", label: "Transport", icon: Car },
 ]
 
+function SongButton() {
+  const [playing, setPlaying] = useState(false)
+
+  function toggleSong() {
+    const existing = document.getElementById("mk-song-player")
+    if (existing) {
+      existing.remove()
+      setPlaying(false)
+      return
+    }
+
+    const iframe = document.createElement("iframe")
+    iframe.id = "mk-song-player"
+    iframe.src = "https://www.youtube-nocookie.com/embed/w0NEOVbU3hQ?autoplay=1&playsinline=1&controls=0&rel=0"
+    iframe.allow = "autoplay; encrypted-media"
+    iframe.setAttribute("title", "Notre chanson")
+    iframe.style.position = "fixed"
+    iframe.style.left = "-9999px"
+    iframe.style.bottom = "0"
+    iframe.style.width = "2px"
+    iframe.style.height = "2px"
+    iframe.style.opacity = "0"
+    iframe.style.pointerEvents = "none"
+    document.body.appendChild(iframe)
+    setPlaying(true)
+  }
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50">
+      <button
+        type="button"
+        onClick={toggleSong}
+        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#6D1925]/15 bg-[#FFF7E9]/95 px-4 text-sm font-bold text-[#6D1925] shadow-lg backdrop-blur"
+        aria-label={playing ? "Mettre notre chanson en pause" : "Lire notre chanson"}
+      >
+        {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
+        {playing ? "Pause" : "Play"}
+      </button>
+    </div>
+  )
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isLegacyAdmin = pathname.startsWith("/invites") || pathname.startsWith("/admin")
@@ -18,37 +61,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (isLegacyAdmin) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="border-b border-[#6D1925]/10 bg-white/70 px-4 py-2">
-        <div className="mx-auto flex max-w-6xl items-center justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              const existing = document.getElementById("mk-song-player")
-              if (existing) {
-                existing.remove()
-                return
-              }
-              const iframe = document.createElement("iframe")
-              iframe.id = "mk-song-player"
-              iframe.src = "https://www.youtube.com/embed/w0NEOVbU3hQ?autoplay=1&playsinline=1"
-              iframe.allow = "autoplay"
-              iframe.style.position = "fixed"
-              iframe.style.width = "1px"
-              iframe.style.height = "1px"
-              iframe.style.opacity = "0"
-              iframe.style.pointerEvents = "none"
-              document.body.appendChild(iframe)
-            }}
-            className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#6D1925]/15 bg-[#FFF7E9] px-3 text-xs font-semibold text-[#6D1925]"
-            aria-label="Lire notre chanson"
-          >
-            <Play className="h-3.5 w-3.5 fill-current" />
-            Play
-          </button>
-        </div>
-      </div>
-
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
+        <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
+        <SongButton />
       </div>
     )
   }
@@ -97,6 +111,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="mt-10 border-t border-[#6D1925]/10 px-4 py-8 text-center text-xs text-[#6D1925]/45">
         Mariage Mahery & Kanto · 31 décembre 2026
       </footer>
+
+      <SongButton />
     </div>
   )
 }
