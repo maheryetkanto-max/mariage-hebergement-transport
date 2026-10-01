@@ -15,35 +15,27 @@ const NAV = [
 function SongButton() {
   const [playing, setPlaying] = useState(false)
 
-  function toggleSong() {
-    const existing = document.getElementById("mk-song-player")
-    if (existing) {
-      existing.remove()
-      setPlaying(false)
-      return
-    }
-
-    const iframe = document.createElement("iframe")
-    iframe.id = "mk-song-player"
-    iframe.src = "https://www.youtube-nocookie.com/embed/w0NEOVbU3hQ?autoplay=1&playsinline=1&controls=0&rel=0"
-    iframe.allow = "autoplay; encrypted-media"
-    iframe.setAttribute("title", "Notre chanson")
-    iframe.style.position = "fixed"
-    iframe.style.left = "-9999px"
-    iframe.style.bottom = "0"
-    iframe.style.width = "2px"
-    iframe.style.height = "2px"
-    iframe.style.opacity = "0"
-    iframe.style.pointerEvents = "none"
-    document.body.appendChild(iframe)
-    setPlaying(true)
-  }
-
   return (
     <div className="fixed bottom-4 right-4 z-50">
+      {playing && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 right-0 h-1 w-1 overflow-hidden"
+        >
+          <iframe
+            id="mk-song-player"
+            title="Notre chanson"
+            src="https://www.youtube.com/embed/w0NEOVbU3hQ?autoplay=1&playsinline=1&controls=0&rel=0&loop=1&playlist=w0NEOVbU3hQ"
+            allow="autoplay; encrypted-media"
+            width="220"
+            height="124"
+            className="border-0"
+          />
+        </div>
+      )}
       <button
         type="button"
-        onClick={toggleSong}
+        onClick={() => setPlaying((value) => !value)}
         className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#6D1925]/15 bg-[#FFF7E9]/95 px-4 text-sm font-bold text-[#6D1925] shadow-lg backdrop-blur"
         aria-label={playing ? "Mettre notre chanson en pause" : "Lire notre chanson"}
       >
