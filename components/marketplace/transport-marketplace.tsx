@@ -63,6 +63,17 @@ function transportQuestionLink(veh: Vehicle) {
   return `https://wa.me/${whatsappNumber(veh.telephone)}?text=${encodeURIComponent(text)}`
 }
 
+function firstName(value: string) {
+  return value.trim().split(/\s+/)[0] || value
+}
+
+function ownerDisplayName(veh: Vehicle) {
+  const main = firstName(veh.conducteur)
+  if (veh.genre_conducteur !== "homme_et_femme" || !veh.compagnons_prenoms) return main
+  const companion = veh.compagnons_prenoms.split(",")[0]?.replace(/\s*\([^)]*\)\s*$/, "").trim()
+  return companion ? `${main} & ${firstName(companion)}` : main
+}
+
 export function TransportMarketplace() {
   const { data: vehicles = [], isLoading } = useVehicles()
   const { data: offerPeople = [] } = useOfferPeople()
@@ -77,7 +88,7 @@ export function TransportMarketplace() {
   const [people, setPeople] = useState(1)
   const [gender, setGender] = useState<"" | Gender>("")
   const [petsOnly, setPetsOnly] = useState(false)
-  const [bookingVehicle, setBookingVehicle] = useState<Vehicle | null>(null)
+  const [bookingVehicle, setBookingVehicle] = useState<{ vehicle: Vehicle; leg: "aller" | "retour" } | null>(null)
 
   useEffect(() => { setManageUrl(window.localStorage.getItem("last-offer-group-link") ?? "") }, [])
 
@@ -198,7 +209,7 @@ export function TransportMarketplace() {
               veh={veh}
               outboundPeople={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id && group.leg === "aller")?.people ?? [{ name: veh.conducteur.split(" ")[0], origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]}
               returnPeople={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id && group.leg === "retour")?.people ?? []}
-              onBook={() => setBookingVehicle(veh)}
+              onBook={(leg) => setBookingVehicle({ vehicle: veh, leg })}
             />
           ))}
         </div>
@@ -208,7 +219,8 @@ export function TransportMarketplace() {
 
       {bookingVehicle && (
         <TransportReservationDialog
-          veh={bookingVehicle}
+          veh={bookingVehicle.vehicle}
+          trajetSens={bookingVehicle.leg}
           initialPeople={people}
           onClose={() => setBookingVehicle(null)}
         />
@@ -226,10 +238,12 @@ function TransportOfferCard({
   veh: Vehicle
   outboundPeople: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[]
   returnPeople: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[]
-  onBook: () => void
+  onBook: (leg: "aller" | "retour") => void
 }) {
-  const places = veh.places_disponibles ?? veh.places
-  const available = places > 0
+  const outboundPlaces = veh.places_disponibles ?? veh.places
+  const returnPlaces = veh.date_retour ? (veh.places_retour_disponibles ?? veh.places) : 0
+  const outboundAvailable = outboundPlaces > 0
+  const returnAvailable = Boolean(veh.date_retour) && returnPlaces > 0
   const destination = veh.type_trajet === "navette"
     ? "Navette locale"
     : normalizeCity(veh.destination ?? "").includes("eglise")
@@ -240,12 +254,11 @@ function TransportOfferCard({
     <article className="overflow-hidden rounded-2xl border border-[#6D1925]/10 bg-white shadow-[0_6px_22px_rgba(109,25,37,0.05)]">
       <div className="flex items-start justify-between gap-3 bg-[#FFF7E9]/55 p-4">
         <div className="min-w-0">
-          <h2 className="font-serif text-xl font-semibold text-[#6D1925]">{genderEmoji(veh.genre_conducteur)} {veh.conducteur}</h2>
+          <h2 className="font-serif text-xl font-semibold text-[#6D1925]">{genderEmoji(veh.genre_conducteur)} {ownerDisplayName(veh)}</h2>
           <p className="mt-1 text-xs text-[#6D1925]/65">{veh.type_trajet === "navette" ? "🚉 Navette locale depuis une gare" : "🚗 Covoiturage"}</p>
         </div>
-        <div className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${available ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
-          <span className={`mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full ${available ? "bg-emerald-500" : "bg-red-500"}`} />
-          {available ? (places === 1 ? "Disponible · 1 place restante" : `Disponible · ${places} places`) : "Complet"}
+        <div className="shrink-0 rounded-full bg-[#6D1925]/5 px-3 py-1.5 text-xs font-bold text-[#6D1925]">
+          🚗 {outboundAvailable || returnAvailable ? "Trajet ouvert" : "Victime de son succès ✨"}
         </div>
       </div>
 
@@ -255,29 +268,43 @@ function TransportOfferCard({
             <p className="font-bold uppercase tracking-wide text-[#6D1925]/55">Aller</p>
             <p className="mt-1 font-semibold text-[#4B242B]">{dateLabel(veh.date_depart)}{veh.heure_depart ? ` · ${veh.heure_depart}` : ""}</p>
             <p className="mt-1">{veh.type_trajet === "navette" ? `Gare de ${veh.ville_depart || "à préciser"}` : veh.ville_depart || "Départ à préciser"} → {destination}</p>
+            <div className={`mt-2 inline-flex items-center rounded-full px-2.5 py-1 font-bold ${outboundAvailable ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+              <span className={`mr-1.5 h-2 w-2 animate-pulse rounded-full ${outboundAvailable ? "bg-emerald-500" : "bg-rose-500"}`} />
+              {outboundAvailable ? (outboundPlaces === 1 ? "Disponible · 1 place" : `Disponible · ${outboundPlaces} places`) : "Victime de son succès ✨"}
+            </div>
+            <button
+              type="button"
+              disabled={!outboundAvailable || !veh.reservation_active}
+              onClick={() => onBook("aller")}
+              className="mt-2 min-h-9 w-full rounded-lg bg-[#6D1925] px-3 text-xs font-semibold text-[#FFF7E9] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Réserver l’aller
+            </button>
           </div>
           <div className="border-l border-[#6D1925]/10 pl-3">
             <p className="font-bold uppercase tracking-wide text-[#6D1925]/55">Retour</p>
             {veh.date_retour ? <>
               <p className="mt-1 font-semibold text-[#4B242B]">{dateLabel(veh.date_retour)}{veh.heure_retour ? ` · ${veh.heure_retour}` : ""}</p>
-              <p className="mt-1">{veh.retour_ville_arrivee || "Destination à préciser"}</p>
+              <p className="mt-1">{veh.retour_lieu_depart || "Départ à préciser"} → {veh.retour_ville_arrivee || "Destination à préciser"}</p>
+              <div className={`mt-2 inline-flex items-center rounded-full px-2.5 py-1 font-bold ${returnAvailable ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                <span className={`mr-1.5 h-2 w-2 animate-pulse rounded-full ${returnAvailable ? "bg-emerald-500" : "bg-rose-500"}`} />
+                {returnAvailable ? (returnPlaces === 1 ? "Disponible · 1 place" : `Disponible · ${returnPlaces} places`) : "Victime de son succès ✨"}
+              </div>
+              <button
+                type="button"
+                disabled={!returnAvailable || !veh.reservation_active}
+                onClick={() => onBook("retour")}
+                className="mt-2 min-h-9 w-full rounded-lg bg-[#6D1925] px-3 text-xs font-semibold text-[#FFF7E9] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Réserver le retour
+              </button>
             </> : <p className="mt-1 text-[#6D1925]/55">Pas de retour proposé</p>}
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wide text-[#6D1925]/50">Montant / personne</p>
-            <p className="font-serif text-2xl font-bold text-[#6D1925]">{money(Number(veh.participation || 0))} €</p>
-          </div>
-          <button
-            type="button"
-            disabled={!available || !veh.reservation_active}
-            onClick={onBook}
-            className="min-h-10 rounded-xl bg-[#6D1925] px-4 text-xs font-semibold text-[#FFF7E9] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {!available ? "Complet" : "Réserver"}
-          </button>
+        <div className="mt-3">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-[#6D1925]/50">Montant / personne</p>
+          <p className="font-serif text-2xl font-bold text-[#6D1925]">{money(Number(veh.participation || 0))} €</p>
         </div>
 
         <details className="mt-3 rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/35 p-3">
@@ -512,10 +539,12 @@ function Field({ title, children }: { title: string; children: React.ReactNode }
 
 function TransportReservationDialog({
   veh,
+  trajetSens,
   initialPeople,
   onClose,
 }: {
   veh: Vehicle
+  trajetSens: "aller" | "retour"
   initialPeople: number
   onClose: () => void
 }) {
@@ -527,7 +556,7 @@ function TransportReservationDialog({
     email: "",
     telephone: "+33",
     genre: "femme" as Gender,
-    nbPersonnes: Math.min(Math.max(1, initialPeople), Math.max(1, veh.places_disponibles)),
+    nbPersonnes: Math.min(Math.max(1, initialPeople), Math.max(1, trajetSens === "retour" ? (veh.places_retour_disponibles ?? veh.places) : veh.places_disponibles)),
     consentement: false,
     origin: "",
     companions: "",
@@ -556,6 +585,7 @@ function TransportReservationDialog({
     try {
       const result = await reserveVehicle({
         vehicleId: veh.id,
+        trajetSens,
         nom: form.nom,
         email: form.email,
         telephone: form.telephone,
@@ -587,10 +617,10 @@ function TransportReservationDialog({
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6D1925]/55">Réservation</p>
             <h2 className="font-serif text-2xl font-semibold text-[#6D1925]">
-              {veh.type_trajet === "navette" ? "Navette" : "Covoiturage"} avec {veh.conducteur}
+              {trajetSens === "aller" ? "Aller" : "Retour"} avec {ownerDisplayName(veh)}
             </h2>
             <p className="mt-1 text-sm text-[#5B4549]">
-              {veh.places_disponibles} place{veh.places_disponibles > 1 ? "s" : ""} restante{veh.places_disponibles > 1 ? "s" : ""}
+              {(trajetSens === "retour" ? (veh.places_retour_disponibles ?? veh.places) : veh.places_disponibles)} place{(trajetSens === "retour" ? (veh.places_retour_disponibles ?? veh.places) : veh.places_disponibles) > 1 ? "s" : ""} restante{(trajetSens === "retour" ? (veh.places_retour_disponibles ?? veh.places) : veh.places_disponibles) > 1 ? "s" : ""}
             </p>
           </div>
           <button type="button" onClick={onClose} className="rounded-full p-2 text-[#6D1925] hover:bg-white">
@@ -599,12 +629,13 @@ function TransportReservationDialog({
         </div>
 
         <div className="mt-4 rounded-2xl border border-[#6D1925]/10 bg-white/70 p-4 text-sm text-[#5B4549]">
-          <strong>{dateLabel(veh.date_depart)}</strong>
-          {veh.heure_depart ? " à " + veh.heure_depart : ""}
-          <br />
-          {veh.ville_depart || veh.lieu_depart || "Départ à confirmer"}
-          {veh.destination ? " → " + veh.destination : ""}
-          {veh.date_retour ? <><br />Retour : {dateLabel(veh.date_retour)}{veh.heure_retour ? " à " + veh.heure_retour : ""}</> : null}
+          {trajetSens === "aller" ? <>
+            <strong>{dateLabel(veh.date_depart)}</strong>{veh.heure_depart ? " à " + veh.heure_depart : ""}
+            <br />{veh.ville_depart || "Départ à confirmer"}{veh.destination ? " → " + veh.destination : ""}
+          </> : <>
+            <strong>{dateLabel(veh.date_retour)}</strong>{veh.heure_retour ? " à " + veh.heure_retour : ""}
+            <br />{veh.retour_lieu_depart || "Départ à confirmer"} → {veh.retour_ville_arrivee || "Destination à confirmer"}
+          </>}
         </div>
 
         {confirmation ? (
@@ -661,9 +692,12 @@ function TransportReservationDialog({
               className={field}
               type="number"
               min={1}
-              max={veh.places_disponibles}
+              max={trajetSens === "retour" ? (veh.places_retour_disponibles ?? veh.places) : veh.places_disponibles}
               value={form.nbPersonnes}
-              onChange={(e) => setForm((s) => ({ ...s, nbPersonnes: Math.min(veh.places_disponibles, Math.max(1, Number(e.target.value) || 1)) }))}
+              onChange={(e) => {
+                const maxPlaces = trajetSens === "retour" ? (veh.places_retour_disponibles ?? veh.places) : veh.places_disponibles
+                setForm((s) => ({ ...s, nbPersonnes: Math.min(maxPlaces, Math.max(1, Number(e.target.value) || 1)) }))
+              }}
             />
           </Field>
 
