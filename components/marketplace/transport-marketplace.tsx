@@ -80,6 +80,13 @@ function cityWithDepartment(city: string | null) {
   return department ? `${city} (${department})` : city
 }
 
+function returnDepartureSearchLabel(value: string | null) {
+  const normalized = normalizeCity(value ?? "")
+  if (normalized.includes("clos belair")) return "Saint-Benoît-sur-Seine"
+  if (normalized.includes("eglise") || normalized.includes("église")) return "Troyes"
+  return value ?? ""
+}
+
 function uniqueReturnPeople(
   outboundPeople: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[],
   returnPeople: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[],
@@ -137,7 +144,7 @@ export function TransportMarketplace() {
       .filter((v) => !gender || v.genre_conducteur === gender)
       .filter((v) => !petsOnly || v.animaux_acceptes)
       .filter((v) => searchLeg === "retour" || !department || idfDepartment(v.ville_depart ?? "") === department)
-      .filter((v) => searchLeg === "aller" || !cityQuery || normalizeCity(v.retour_lieu_depart ?? "").includes(cityQuery))
+      .filter((v) => searchLeg === "aller" || !cityQuery || normalizeCity(returnDepartureSearchLabel(v.retour_lieu_depart)).includes(cityQuery))
       .sort((a, b) => {
         const left = searchLeg === "aller" ? (a.ville_depart ?? "") : (a.retour_lieu_depart ?? "")
         const right = searchLeg === "aller" ? (b.ville_depart ?? "") : (b.retour_lieu_depart ?? "")
