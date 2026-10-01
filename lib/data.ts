@@ -32,7 +32,7 @@ async function fetchGuests(): Promise<Guest[]> {
 async function fetchAccommodations(): Promise<Accommodation[]> {
   const { data, error } = await supabase
     .from("accommodations")
-    .select("id,nom,type,adresse,capacite,contact,commentaires,propose_par,genre_proposant,telephone_proposant,places_disponibles,minutes_salle,date_entree,date_sortie,prix_personne_nuit,enfants_acceptes,animaux_acceptes,actif,source,reservation_active,created_at")
+    .select("id,nom,type,adresse,capacite,contact,commentaires,propose_par,genre_proposant,telephone_proposant,places_disponibles,minutes_salle,date_entree,date_sortie,prix_personne_nuit,prix_mode,nuits_minimum,enfants_acceptes,animaux_acceptes,actif,source,reservation_active,created_at")
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as Accommodation[]
@@ -163,6 +163,8 @@ export async function saveAccommodation(acc: Partial<Accommodation> & { id?: str
     date_entree: acc.date_entree || null,
     date_sortie: acc.date_sortie || null,
     prix_personne_nuit: acc.prix_personne_nuit ?? 0,
+    prix_mode: acc.prix_mode ?? "per_night",
+    nuits_minimum: acc.nuits_minimum ?? 1,
     enfants_acceptes: acc.enfants_acceptes ?? true,
     animaux_acceptes: acc.animaux_acceptes ?? false,
     actif: acc.actif ?? true,
