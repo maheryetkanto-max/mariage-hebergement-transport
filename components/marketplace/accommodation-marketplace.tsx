@@ -540,7 +540,7 @@ function AccommodationForm({
           <AddressPicker className={field} label="Adresse exacte du logement" city={form.ville_logement} value={form.adresse} onChange={(value) => set("adresse", value)} />
         </Field>
 
-        <div><span className={label}>Ville du logement (Aube ou Île-de-France) *</span><CityPicker className={field} label="Ville du logement" area="idf-aube" placeholder="Tapez une ville…" value={form.ville_logement} onChange={(value) => set("ville_logement", value)} /></div>
+        <div><span className={label}>Ville du logement · autour de Troyes *</span><CityPicker className={field} label="Ville du logement" area="troyes-2h" placeholder="Tapez une ville…" value={form.ville_logement} onChange={(value) => set("ville_logement", value)} /></div>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <Field title="Places adultes disponibles *">
