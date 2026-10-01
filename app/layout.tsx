@@ -13,9 +13,34 @@ const cormorant = Cormorant_Garamond({
 })
 
 export const metadata: Metadata = {
-  title: "Hébergement & Transport — Mariage M&K",
+  metadataBase: new URL("https://mariage-mk-app.vercel.app"),
+  title: "Mahery & Kanto — Hébergement & Transport",
   description:
     "Trouvez ou proposez un hébergement et un transport pour le mariage de Mahery & Kanto.",
+  openGraph: {
+    title: "Mahery & Kanto — Mariage du 31 décembre 2026",
+    description:
+      "Hébergement & transport pour le mariage de Mahery & Kanto.",
+    url: "https://mariage-mk-app.vercel.app",
+    siteName: "Mahery & Kanto",
+    locale: "fr_FR",
+    type: "website",
+    images: [
+      {
+        url: "/og-mahery-kanto.jpg",
+        width: 320,
+        height: 168,
+        alt: "Mahery et Kanto",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Mahery & Kanto — Mariage du 31 décembre 2026",
+    description:
+      "Hébergement & transport pour le mariage de Mahery & Kanto.",
+    images: ["/og-mahery-kanto.jpg"],
+  },
 }
 
 export const viewport: Viewport = {
