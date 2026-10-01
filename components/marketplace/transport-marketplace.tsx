@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, Car, Clock3, MapPin, MessageCircle, Plus, Search, X } from "lucide-react"
+import { CalendarDays, Car, Clock3, MapPin, MessageCircle, Phone, Plus, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import { reserveVehicle, saveVehicle, useVehicles, useOfferPeople } from "@/lib/data"
 import { OUTBOUND_DATES, RETURN_DATES, type Gender, type TransportType, type Vehicle } from "@/lib/types"
@@ -40,6 +40,19 @@ function money(value: number) {
     minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(value)
+}
+
+function whatsappNumber(phone: string) {
+  let digits = phone.replace(/\D/g, "")
+  if (digits.startsWith("00")) digits = digits.slice(2)
+  if (digits.startsWith("0")) digits = "33" + digits.slice(1)
+  return digits
+}
+
+function transportQuestionLink(veh: Vehicle) {
+  if (!veh.telephone) return null
+  const text = `Bonjour ${veh.conducteur}, j’ai une question concernant votre offre de ${veh.type_trajet === "navette" ? "navette" : "covoiturage"} pour le mariage de Mahery & Kanto.`
+  return `https://wa.me/${whatsappNumber(veh.telephone)}?text=${encodeURIComponent(text)}`
 }
 
 export function TransportMarketplace() {
@@ -231,7 +244,33 @@ export function TransportMarketplace() {
                     <Sticker>{veh.gratuit ? "🎁 Gratuit" : "💶 " + money(Number(veh.participation || 0)) + " € / pers."}</Sticker>
                   </div>
 
-                  <p className="border-t border-[#6D1925]/8 pt-4 text-xs text-[#6D1925]/65">Les coordonnées du conducteur s’affichent après confirmation de votre place.</p>
+                  {veh.telephone && (
+                    <div className="rounded-2xl border border-[#6D1925]/10 bg-[#FFF7E9]/65 p-4">
+                      <p className="text-sm font-bold text-[#6D1925]">Une question avant de réserver ?</p>
+                      <p className="mt-1 text-xs leading-5 text-[#5B4549]">
+                        Contactez directement {veh.conducteur}. Vous n’avez pas besoin de réserver pour poser une question.
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-[#4B242B]">{veh.telephone}</p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <a
+                          href={transportQuestionLink(veh) || undefined}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 text-sm font-bold text-[#10351d]"
+                        >
+                          <MessageCircle className="h-5 w-5" />
+                          Poser une question sur WhatsApp
+                        </a>
+                        <a
+                          href={`tel:${veh.telephone.replace(/\s/g, "")}`}
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 text-sm font-semibold text-[#6D1925]"
+                        >
+                          <Phone className="h-4 w-4" />
+                          Appeler le conducteur
+                        </a>
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     type="button"
@@ -246,7 +285,7 @@ export function TransportMarketplace() {
                         : "Réserver ce transport"}
                   </button>
 
-                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3"><summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary><div className="mt-3"><PeopleList people={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id)?.people ?? [{ name: veh.conducteur.split(" ")[0], origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]} /><p className="mt-3 text-xs text-[#6D1925]/65">Téléphone, email et adresse précise disponibles après confirmation de la place.</p></div></details>
+                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3"><summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary><div className="mt-3"><PeopleList people={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id)?.people ?? [{ name: veh.conducteur.split(" ")[0], origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]} /><p className="mt-3 text-xs text-[#6D1925]/65">Le téléphone est disponible pour poser une question avant réservation. L’email et l’adresse précise restent communiqués après confirmation de la place.</p></div></details>
                   {veh.commentaires && <p className="rounded-xl bg-[#6D1925]/[0.035] p-3 text-xs leading-5 text-[#5B4549]">{veh.commentaires}</p>}
                 </div>
               </article>
