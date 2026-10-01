@@ -247,18 +247,21 @@ export function AccommodationMarketplace() {
                         Proposé par <strong>{genderEmoji(acc.genre_proposant)} {acc.propose_par || acc.contact || "Un invité"}</strong>
                       </p>
                     </div>
-                    <div className={"shrink-0 rounded-xl px-3 py-2 text-center text-[#FFF7E9] " + (places <= 4 && places > 0 ? "bg-[#8E2D18]" : places > 0 ? "bg-emerald-700" : "bg-[#6D1925]")}>
-                      {places > 0 && (
-                        <div className="mb-1 flex items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-wide">
-                          <span className="h-2 w-2 animate-pulse rounded-full bg-lime-300" />
-                          {places <= 4 ? "Bientôt plus disponible" : "Disponible"}
+                    <div className="shrink-0 text-right">
+                      {places > 0 ? (
+                        <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
+                          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" />
+                          {places === 1 ? "Disponible · 1 place restante" : `Disponible · ${places} places`}
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700">
+                          <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+                          Victime de son succès ✨
                         </div>
                       )}
-                      <div className="text-xl font-bold">{places}</div>
-                      <div className="text-[10px] uppercase tracking-wide">
-                        {places <= 4 && places > 0
-                          ? `${places} place${places > 1 ? "s" : ""} restante${places > 1 ? "s" : ""}`
-                          : `${places} place${places > 1 ? "s" : ""}`}
+                      <div className="mt-2 rounded-xl bg-[#6D1925] px-3 py-2 text-center text-[#FFF7E9]">
+                        <div className="text-xl font-bold">{places}</div>
+                        <div className="text-[10px] uppercase tracking-wide">{places} place{places > 1 ? "s" : ""}</div>
                       </div>
                     </div>
                   </div>
