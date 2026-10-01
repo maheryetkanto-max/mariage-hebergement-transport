@@ -294,7 +294,7 @@ export async function reserveAccommodation(input: ReservationContact & {
   accommodationId: string
   dateEntree: string
   dateSortie: string
-  profile: { origin: string; interests: string[]; companions: string[]; luggage?: "petit" | "moyen" | "gros" }
+  profile: { origin: string; interests: string[]; companions: string[]; companionContacts?: { name: string; gender: "homme" | "femme"; phone: string; kind: "adult" | "child" }[]; luggage?: "petit" | "moyen" | "gros" }
 }) {
   const { data, error } = await supabase.rpc("reserve_accommodation_with_profile", {
     p_accommodation_id: input.accommodationId,
@@ -333,7 +333,7 @@ export async function reserveAccommodation(input: ReservationContact & {
 export async function reserveVehicle(input: ReservationContact & {
   vehicleId: string
   trajetSens: "aller" | "retour" | "aller-retour"
-  profile: { origin: string; interests: string[]; companions: string[]; luggage?: "petit" | "moyen" | "gros" }
+  profile: { origin: string; interests: string[]; companions: string[]; companionContacts?: { name: string; gender: "homme" | "femme"; phone: string; kind: "adult" | "child" }[]; luggage?: "petit" | "moyen" | "gros" }
 }) {
   const { data, error } = await supabase.rpc("reserve_vehicle_leg_with_profile", {
     p_vehicle_id: input.vehicleId,
