@@ -75,7 +75,7 @@ export function TransportMarketplace() {
   const [department, setDepartment] = useState("")
   const [arrivalCity, setArrivalCity] = useState("")
   const [people, setPeople] = useState(1)
-  const [gender, setGender] = useState<"" | Gender>("femme")
+  const [gender, setGender] = useState<"" | Gender>("")
   const [petsOnly, setPetsOnly] = useState(false)
   const [bookingVehicle, setBookingVehicle] = useState<Vehicle | null>(null)
 
@@ -179,7 +179,7 @@ export function TransportMarketplace() {
 
       {manageUrl && <div className="rounded-xl border border-[#6D1925]/15 bg-white p-4 text-sm"><strong>Votre lien personnel :</strong> <a className="underline text-[#6D1925]" href={manageUrl}>Créer ou suivre le groupe WhatsApp de votre fiche</a>. Conservez ce lien.</div>}
 
-      {showForm && <TransportForm onClose={() => setShowForm(false)} onPublished={(url) => { setManageUrl(url); window.localStorage.setItem("last-offer-group-link", url); setShowForm(false); setType(""); setDate(""); setReturnDate(""); setDepartment(""); setArrivalCity(""); setPeople(1); setGender("femme"); setPetsOnly(false); window.setTimeout(() => document.getElementById("transport-offers")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30) }} source={offerSource} />}
+      {showForm && <TransportForm onClose={() => setShowForm(false)} onPublished={(url) => { setManageUrl(url); window.localStorage.setItem("last-offer-group-link", url); setShowForm(false); setType(""); setDate(""); setReturnDate(""); setDepartment(""); setArrivalCity(""); setPeople(1); setGender(""); setPetsOnly(false); window.setTimeout(() => document.getElementById("transport-offers")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30) }} source={offerSource} />}
 
       {isLoading ? (
         <p className="py-10 text-center text-sm text-muted-foreground">Chargement des transports…</p>
@@ -188,7 +188,7 @@ export function TransportMarketplace() {
           <Car className="mx-auto mb-3 h-9 w-9 text-[#6D1925]/35" />
           <p className="font-medium text-[#4B242B]">Aucun transport ne correspond à ces critères.</p>
           <p className="mt-1 text-sm text-[#6D1925]/55">Essayez une autre date ou affichez tous les départements.</p>
-          <button type="button" onClick={() => { setType(""); setDate(""); setReturnDate(""); setDepartment(""); setArrivalCity(""); setPeople(1); setGender("femme"); setPetsOnly(false) }} className="mt-4 min-h-11 rounded-xl border border-[#6D1925]/25 bg-white px-4 text-sm font-semibold text-[#6D1925]">Afficher tous les transports</button>
+          <button type="button" onClick={() => { setType(""); setDate(""); setReturnDate(""); setDepartment(""); setArrivalCity(""); setPeople(1); setGender(""); setPetsOnly(false) }} className="mt-4 min-h-11 rounded-xl border border-[#6D1925]/25 bg-white px-4 text-sm font-semibold text-[#6D1925]">Afficher tous les transports</button>
         </div>
       ) : (
         <div id="transport-offers" className="grid scroll-mt-20 gap-3 lg:grid-cols-2">
@@ -196,7 +196,8 @@ export function TransportMarketplace() {
             <TransportOfferCard
               key={veh.id}
               veh={veh}
-              people={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id)?.people ?? [{ name: veh.conducteur.split(" ")[0], origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]}
+              outboundPeople={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id && group.leg === "aller")?.people ?? [{ name: veh.conducteur.split(" ")[0], origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]}
+              returnPeople={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id && group.leg === "retour")?.people ?? []}
               onBook={() => setBookingVehicle(veh)}
             />
           ))}
@@ -218,11 +219,13 @@ export function TransportMarketplace() {
 
 function TransportOfferCard({
   veh,
-  people,
+  outboundPeople,
+  returnPeople,
   onBook,
 }: {
   veh: Vehicle
-  people: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[]
+  outboundPeople: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[]
+  returnPeople: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[]
   onBook: () => void
 }) {
   const places = veh.places_disponibles ?? veh.places
@@ -286,7 +289,16 @@ function TransportOfferCard({
               <Sticker>💶 {money(Number(veh.participation || 0))} € / pers.</Sticker>
             </div>
 
-            <PeopleList people={people} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl bg-white/70 p-3">
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#6D1925]/55">Personnes confirmées · Aller</p>
+                <PeopleList people={outboundPeople} />
+              </div>
+              {veh.date_retour && <div className="rounded-xl bg-white/70 p-3">
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#6D1925]/55">Personnes confirmées · Retour</p>
+                {returnPeople.length ? <PeopleList people={returnPeople} /> : <p className="text-xs text-[#6D1925]/55">Aucune réservation confirmée pour le retour.</p>}
+              </div>}
+            </div>
 
             {veh.telephone && <div className="rounded-xl border border-[#6D1925]/10 bg-white/70 p-3">
               <p className="text-sm font-bold text-[#6D1925]">Une question avant de réserver ?</p>

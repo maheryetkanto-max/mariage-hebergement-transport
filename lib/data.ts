@@ -59,7 +59,7 @@ export function useVehicles() {
   return useSWR<Vehicle[]>(KEYS.vehicles, fetchVehicles)
 }
 
-export interface PublicOfferPeople { type: "vehicle" | "accommodation"; id: string; people: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[] }
+export interface PublicOfferPeople { type: "vehicle" | "accommodation"; id: string; leg?: "aller" | "retour" | null; people: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[] }
 
 export function useOfferPeople() {
   return useSWR<PublicOfferPeople[]>("offer-people", async () => {
