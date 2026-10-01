@@ -47,6 +47,19 @@ function genderEmoji(gender: Gender | null) {
   return gender === "femme" ? "👩" : gender === "homme" ? "👨" : "🙂"
 }
 
+function parseMoney(value: string | number) {
+  const normalized = String(value).trim().replace(",", ".")
+  const amount = Number(normalized)
+  return Number.isFinite(amount) && amount >= 0 ? amount : NaN
+}
+
+function money(value: number) {
+  return new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
 export function AccommodationMarketplace() {
   const { data: accommodations = [], isLoading } = useAccommodations()
   const [showForm, setShowForm] = useState(false)
@@ -164,7 +177,11 @@ export function AccommodationMarketplace() {
         <div className="grid gap-4 lg:grid-cols-2">
           {filtered.map((acc) => {
             const places = acc.places_disponibles ?? acc.capacite
-            const total = selectedNights > 0 ? selectedNights * Number(acc.prix_personne_nuit || 0) : null
+            const fixedStay = acc.prix_mode === "fixed_stay"
+            const unitPrice = Number(acc.prix_personne_nuit || 0)
+            const total = selectedNights > 0
+              ? (fixedStay ? unitPrice : selectedNights * unitPrice)
+              : null
             return (
               <article
                 key={acc.id}
@@ -178,14 +195,24 @@ export function AccommodationMarketplace() {
                         <span className="rounded-full border border-[#6D1925]/15 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#6D1925]/70">
                           {acc.type}
                         </span>
+                        {acc.nuits_minimum > 1 && (
+                          <span className="rounded-full bg-[#6D1925] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#FFF7E9]">
+                            {acc.nuits_minimum} nuits minimum
+                          </span>
+                        )}
                       </div>
                       <p className="mt-1 text-sm text-[#5B4549]">
                         Proposé par <strong>{genderEmoji(acc.genre_proposant)} {acc.propose_par || acc.contact || "Un invité"}</strong>
                       </p>
                     </div>
-                    <div className="shrink-0 rounded-xl bg-[#6D1925] px-3 py-2 text-center text-[#FFF7E9]">
+                    <div className={"shrink-0 rounded-xl px-3 py-2 text-center text-[#FFF7E9] " + (places <= 4 ? "bg-[#8E2D18]" : "bg-[#6D1925]")}>
+                      {places <= 4 && places > 0 && (
+                        <div className="mb-1 text-[9px] font-bold uppercase tracking-wide">Bientôt complet</div>
+                      )}
                       <div className="text-xl font-bold">{places}</div>
-                      <div className="text-[10px] uppercase tracking-wide">place{places > 1 ? "s" : ""}</div>
+                      <div className="text-[10px] uppercase tracking-wide">
+                        {places <= 4 && places > 0 ? "place" + (places > 1 ? "s" : "") + " restante" + (places > 1 ? "s" : "") : "place" + (places > 1 ? "s" : "")}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -217,15 +244,22 @@ export function AccommodationMarketplace() {
 
                   <div className="flex items-end justify-between gap-4 border-t border-[#6D1925]/8 pt-4">
                     <div>
-                      <p className="text-xs text-[#6D1925]/55">Prix par personne / nuit</p>
-                      <p className="font-serif text-2xl font-semibold text-[#6D1925]">
-                        {Number(acc.prix_personne_nuit || 0) === 0
-                          ? "Gratuit"
-                          : Number(acc.prix_personne_nuit || 0).toFixed(0) + " €"}
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#6D1925]/55">
+                        {fixedStay
+                          ? `Prix par personne pour les ${acc.nuits_minimum} nuits`
+                          : "Prix par personne / nuit"}
                       </p>
-                      {total != null && (
+                      <p className="mt-1 font-serif text-3xl font-bold text-[#6D1925]">
+                        {unitPrice === 0 ? "Gratuit" : money(unitPrice) + " €"}
+                      </p>
+                      {fixedStay && acc.nuits_minimum > 1 && (
+                        <p className="mt-1 text-sm font-bold text-[#6D1925]">
+                          {acc.nuits_minimum} nuits minimum
+                        </p>
+                      )}
+                      {total != null && !fixedStay && (
                         <p className="text-xs font-semibold text-[#6D1925]">
-                          Pour votre séjour : {total.toFixed(0)} € / personne
+                          Pour votre séjour : {money(total)} € / personne
                         </p>
                       )}
                     </div>
@@ -307,6 +341,8 @@ function AccommodationForm({
   source: "invite" | "admin"
 }) {
   const [saving, setSaving] = useState(false)
+  const [confirmed, setConfirmed] = useState(false)
+  const [emailSent, setEmailSent] = useState(true)
   const [form, setForm] = useState({
     propose_par: "",
     genre_proposant: "femme" as Gender,
@@ -319,7 +355,9 @@ function AccommodationForm({
     minutes_salle: 10,
     date_entree: "2026-12-30",
     date_sortie: "2027-01-01",
-    prix_personne_nuit: 0,
+    prix_personne_nuit: "0",
+    prix_mode: "per_night" as "per_night" | "fixed_stay",
+    nuits_minimum: 1,
     enfants_acceptes: true,
     animaux_acceptes: false,
     commentaires: "",
@@ -338,10 +376,16 @@ function AccommodationForm({
       toast.error("La date de sortie doit être après la date d’entrée.")
       return
     }
+    const parsedPrice = parseMoney(form.prix_personne_nuit)
+    if (Number.isNaN(parsedPrice)) {
+      toast.error("Indiquez un montant valide, par exemple 0, 15 ou 15,50.")
+      return
+    }
     setSaving(true)
     try {
       await saveAccommodation({
         ...form,
+        prix_personne_nuit: parsedPrice,
         capacite: form.places_disponibles,
         contact: form.propose_par,
         source,
@@ -411,8 +455,33 @@ function AccommodationForm({
           <Field title="Minutes de la salle">
             <input className={field} type="number" min={0} value={form.minutes_salle} onChange={(e) => set("minutes_salle", Math.max(0, Number(e.target.value) || 0))} />
           </Field>
-          <Field title="Prix / pers. / nuit (€) · 0 = gratuit">
-            <input className={field} type="number" min={0} step="0.01" value={form.prix_personne_nuit} onChange={(e) => set("prix_personne_nuit", Math.max(0, Number(e.target.value) || 0))} />
+          <Field title="Montant par personne (€) · 0 = gratuit">
+            <input
+              className={field}
+              type="text"
+              inputMode="decimal"
+              placeholder="Ex. 0, 15 ou 15,50"
+              value={form.prix_personne_nuit}
+              onChange={(e) => set("prix_personne_nuit", e.target.value.replace(/[^0-9,.]/g, ""))}
+            />
+          </Field>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field title="Le montant correspond à">
+            <select className={field} value={form.prix_mode} onChange={(e) => set("prix_mode", e.target.value as "per_night" | "fixed_stay")}>
+              <option value="per_night">Une nuit</option>
+              <option value="fixed_stay">Tout le séjour minimum</option>
+            </select>
+          </Field>
+          <Field title="Nombre minimum de nuits">
+            <input
+              className={field}
+              type="number"
+              min={1}
+              value={form.nuits_minimum}
+              onChange={(e) => set("nuits_minimum", Math.max(1, Number(e.target.value) || 1))}
+            />
           </Field>
         </div>
 
@@ -497,7 +566,9 @@ function AccommodationReservationDialog({
       ? nightsBetween(form.dateEntree, form.dateSortie)
       : 0
   const total =
-    nights * form.nbPersonnes * Number(acc.prix_personne_nuit || 0)
+    (acc.prix_mode === "fixed_stay"
+      ? Number(acc.prix_personne_nuit || 0)
+      : nights * Number(acc.prix_personne_nuit || 0)) * form.nbPersonnes
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -511,6 +582,10 @@ function AccommodationReservationDialog({
     }
     if (form.dateSortie <= form.dateEntree) {
       toast.error("Vérifiez les dates de séjour.")
+      return
+    }
+    if (nights < (acc.nuits_minimum || 1)) {
+      toast.error(`Ce logement demande au minimum ${acc.nuits_minimum || 1} nuit${(acc.nuits_minimum || 1) > 1 ? "s" : ""}.`)
       return
     }
 
@@ -527,12 +602,8 @@ function AccommodationReservationDialog({
         dateSortie: form.dateSortie,
         consentement: form.consentement,
       })
-      if (result.emailSent) {
-        toast.success("Réservation confirmée. Les deux fiches de contact ont été envoyées par email.")
-      } else {
-        toast.warning("Réservation confirmée, mais l’envoi des emails n’a pas abouti. Les organisateurs pourront le relancer.")
-      }
-      onClose()
+      setEmailSent(result.emailSent)
+      setConfirmed(true)
     } catch (error) {
       console.error(error)
       const message = error instanceof Error ? error.message : ""
@@ -542,6 +613,37 @@ function AccommodationReservationDialog({
     } finally {
       setSaving(false)
     }
+  }
+
+  if (confirmed) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-4">
+        <div className="w-full max-w-md rounded-t-3xl bg-[#FFF7E9] p-6 text-center shadow-2xl sm:rounded-3xl">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#6D1925] text-2xl text-[#FFF7E9]">✓</div>
+          <h2 className="mt-4 font-serif text-3xl font-bold text-[#6D1925]">Réservation confirmée</h2>
+          <p className="mt-3 text-sm leading-6 text-[#5B4549]">
+            Contactez maintenant <strong>{acc.propose_par || acc.contact || "la personne qui propose ce logement"}</strong> pour finaliser les détails et vous assurer que tout se passe correctement.
+          </p>
+          {acc.telephone_proposant && (
+            <a
+              href={`tel:${acc.telephone_proposant.replace(/\s/g, "")}`}
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#6D1925] px-4 font-semibold text-[#FFF7E9]"
+            >
+              <Phone className="h-4 w-4" />
+              Appeler maintenant · {acc.telephone_proposant}
+            </a>
+          )}
+          {!emailSent && (
+            <p className="mt-3 rounded-xl bg-white/70 p-3 text-xs leading-5 text-[#6D1925]/70">
+              La réservation est bien enregistrée. L’email automatique n’a pas pu être envoyé, utilisez donc le contact ci-dessus.
+            </p>
+          )}
+          <button type="button" onClick={onClose} className="mt-3 min-h-11 w-full rounded-xl border border-[#6D1925]/20 px-4 text-sm font-semibold text-[#6D1925]">
+            Fermer
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -609,10 +711,12 @@ function AccommodationReservationDialog({
           <div className="rounded-2xl border border-[#6D1925]/10 bg-white/70 p-4">
             <p className="text-xs uppercase tracking-wide text-[#6D1925]/55">Montant calculé automatiquement</p>
             <p className="mt-1 font-serif text-3xl font-semibold text-[#6D1925]">
-              {total === 0 ? "Gratuit" : total.toFixed(0) + " €"}
+              {total === 0 ? "Gratuit" : money(total) + " €"}
             </p>
             <p className="mt-1 text-xs text-[#5B4549]">
-              {form.nbPersonnes} personne{form.nbPersonnes > 1 ? "s" : ""} × {nights} nuit{nights > 1 ? "s" : ""} × {Number(acc.prix_personne_nuit || 0).toFixed(0)} €
+              {acc.prix_mode === "fixed_stay"
+                ? `${form.nbPersonnes} personne${form.nbPersonnes > 1 ? "s" : ""} × forfait de ${money(Number(acc.prix_personne_nuit || 0))} € par personne`
+                : `${form.nbPersonnes} personne${form.nbPersonnes > 1 ? "s" : ""} × ${nights} nuit${nights > 1 ? "s" : ""} × ${money(Number(acc.prix_personne_nuit || 0))} €`}
             </p>
           </div>
 
