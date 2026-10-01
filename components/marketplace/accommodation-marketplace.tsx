@@ -101,7 +101,8 @@ export function AccommodationMarketplace() {
         .filter((a) => !childrenOnly || a.enfants_acceptes)
         .filter((a) => !petsOnly || a.animaux_acceptes)
         .filter((a) => !arrival || !a.date_entree || a.date_entree <= arrival)
-        .filter((a) => !departure || !a.date_sortie || a.date_sortie >= departure),
+        .filter((a) => !departure || !a.date_sortie || a.date_sortie >= departure)
+        .filter((a) => !arrival || !departure || departure <= arrival || nightsBetween(arrival, departure) >= (a.nuits_minimum || 1)),
     [accommodations, arrival, departure, people, city, childrenOnly, petsOnly],
   )
 
