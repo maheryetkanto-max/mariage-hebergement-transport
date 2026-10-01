@@ -98,11 +98,12 @@ export function TransportMarketplace() {
   const [showForm, setShowForm] = useState(false)
   const [manageUrl, setManageUrl] = useState("")
   const [offerSource, setOfferSource] = useState<"invite" | "admin">("invite")
+  const [searchLeg, setSearchLeg] = useState<"aller" | "retour">("aller")
   const [type, setType] = useState<"" | "church" | "venue" | "navette">("")
   const [date, setDate] = useState("")
   const [returnDate, setReturnDate] = useState("")
   const [department, setDepartment] = useState("")
-  const [arrivalCity, setArrivalCity] = useState("")
+  const [returnCity, setReturnCity] = useState("")
   const [people, setPeople] = useState(1)
   const [gender, setGender] = useState<"" | Gender>("")
   const [petsOnly, setPetsOnly] = useState(false)
@@ -121,22 +122,28 @@ export function TransportMarketplace() {
   }, [showForm])
 
   const filtered = useMemo(() => {
-    const returnQuery = normalizeCity(arrivalCity)
+    const cityQuery = normalizeCity(returnCity)
     return vehicles
       .filter((v) => v.actif !== false)
       .filter((v) => {
-        const remaining = v.places_disponibles ?? v.places
+        const remaining = searchLeg === "aller"
+          ? (v.places_disponibles ?? v.places)
+          : (v.date_retour ? (v.places_retour_disponibles ?? v.places) : 0)
         return remaining === 0 || remaining >= people
       })
-      .filter((v) => !type || (type === "navette" ? v.type_trajet === "navette" : type === "church" ? normalizeCity(v.destination ?? "").includes("eglise") : normalizeCity(v.destination ?? "").includes("salle") || normalizeCity(v.destination ?? "").includes("clos belair")))
-      .filter((v) => !date || v.date_depart === date)
-      .filter((v) => !returnDate || v.date_retour === returnDate)
+      .filter((v) => searchLeg === "retour" || !type || (type === "navette" ? v.type_trajet === "navette" : type === "church" ? normalizeCity(v.destination ?? "").includes("eglise") : normalizeCity(v.destination ?? "").includes("salle") || normalizeCity(v.destination ?? "").includes("clos belair")))
+      .filter((v) => searchLeg === "retour" || !date || v.date_depart === date)
+      .filter((v) => searchLeg === "aller" || !returnDate || v.date_retour === returnDate)
       .filter((v) => !gender || v.genre_conducteur === gender)
       .filter((v) => !petsOnly || v.animaux_acceptes)
-      .filter((v) => !department || idfDepartment(v.ville_depart ?? "") === department)
-      .filter((v) => !returnQuery || normalizeCity(v.retour_ville_arrivee ?? "").includes(returnQuery))
-      .sort((a, b) => (a.ville_depart ?? "").localeCompare(b.ville_depart ?? "", "fr", { sensitivity: "base" }))
-  }, [vehicles, type, date, returnDate, department, arrivalCity, people, gender, petsOnly])
+      .filter((v) => searchLeg === "retour" || !department || idfDepartment(v.ville_depart ?? "") === department)
+      .filter((v) => searchLeg === "aller" || !cityQuery || normalizeCity(v.retour_lieu_depart ?? "").includes(cityQuery))
+      .sort((a, b) => {
+        const left = searchLeg === "aller" ? (a.ville_depart ?? "") : (a.retour_lieu_depart ?? "")
+        const right = searchLeg === "aller" ? (b.ville_depart ?? "") : (b.retour_lieu_depart ?? "")
+        return left.localeCompare(right, "fr", { sensitivity: "base" })
+      })
+  }, [vehicles, searchLeg, type, date, returnDate, department, returnCity, people, gender, petsOnly])
 
   return (
     <div className="space-y-6">
@@ -156,59 +163,94 @@ export function TransportMarketplace() {
       </section>
 
       <section className="rounded-2xl border border-[#6D1925]/10 bg-white/65 p-4 shadow-sm">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#6D1925]"><Search className="h-4 w-4" /> Trouver une place</div>
-        <div className="grid gap-3 md:grid-cols-5">
-          <div>
-            <span className={label}>Destination de l’aller</span>
-            <select className={field} value={type} onChange={(e) => setType(e.target.value as typeof type)}>
-              <option value="">Tous</option>
-              <option value="church">Île-de-France → Église</option>
-              <option value="venue">Île-de-France → Salle de réception</option>
-              <option value="navette">Navette locale depuis une gare autour de Troyes</option>
-            </select>
-          </div>
-          <div>
-            <span className={label}>Date de départ</span>
-            <select className={field} value={date} onChange={(e) => setDate(e.target.value)}>
-              <option value="">Toutes</option>
-              {OUTBOUND_DATES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <span className={label}>Retour</span>
-            <select className={field} value={returnDate} onChange={(e) => setReturnDate(e.target.value)}>
-              <option value="">Peu importe</option>
-              {RETURN_DATES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <span className={label}>Département de départ</span>
-            <select className={field} value={department} onChange={(e) => setDepartment(e.target.value)}><option value="">Tous les départements · toutes les voitures</option>{DEPARTMENTS.map(([code, name]) => <option key={code} value={code}>{code} · {name}</option>)}</select>
-          </div>
-          <div>
-            <span className={label}>Places nécessaires (adultes et enfants)</span>
-            <select className={field} value={people} onChange={(e) => setPeople(Number(e.target.value))}>
-              {adultChoices.map((count) => <option key={count} value={count}>{count} personne{count > 1 ? "s" : ""}</option>)}
-            </select>
-          </div>
+        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-[#6D1925]"><Search className="h-4 w-4" /> Trouver une place</div>
+
+        <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-[#FFF7E9] p-1.5">
+          <button
+            type="button"
+            onClick={() => { setSearchLeg("aller"); setReturnDate(""); setReturnCity("") }}
+            className={`min-h-11 rounded-xl px-4 text-sm font-bold transition ${searchLeg === "aller" ? "bg-[#6D1925] text-[#FFF7E9] shadow-sm" : "bg-transparent text-[#6D1925]"}`}
+          >
+            Chercher un aller
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSearchLeg("retour"); setType(""); setDate(""); setDepartment("") }}
+            className={`min-h-11 rounded-xl px-4 text-sm font-bold transition ${searchLeg === "retour" ? "bg-[#6D1925] text-[#FFF7E9] shadow-sm" : "bg-transparent text-[#6D1925]"}`}
+          >
+            Chercher un retour
+          </button>
         </div>
-        {returnDate && <div className="mt-3 max-w-sm"><span className={label}>Ville de dépose au retour (Île-de-France)</span><CityPicker className={field} label="Chercher la ville de dépose au retour" area="idf" placeholder="Tapez une ville…" value={arrivalCity} onChange={setArrivalCity} /></div>}
+
+        {searchLeg === "aller" ? (
+          <div className="grid gap-3 md:grid-cols-4">
+            <div>
+              <span className={label}>Destination de l’aller</span>
+              <select className={field} value={type} onChange={(e) => setType(e.target.value as typeof type)}>
+                <option value="">Toutes</option>
+                <option value="church">Île-de-France → Église</option>
+                <option value="venue">Île-de-France → Salle de réception</option>
+                <option value="navette">Navette locale depuis une gare autour de Troyes</option>
+              </select>
+            </div>
+            <div>
+              <span className={label}>Date de départ</span>
+              <select className={field} value={date} onChange={(e) => setDate(e.target.value)}>
+                <option value="">Toutes</option>
+                {OUTBOUND_DATES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <span className={label}>Département de départ</span>
+              <select className={field} value={department} onChange={(e) => setDepartment(e.target.value)}>
+                <option value="">Tous les départements</option>
+                {DEPARTMENTS.map(([code, name]) => <option key={code} value={code}>{code} · {name}</option>)}
+              </select>
+            </div>
+            <div>
+              <span className={label}>Places nécessaires (adultes et enfants)</span>
+              <select className={field} value={people} onChange={(e) => setPeople(Number(e.target.value))}>
+                {adultChoices.map((count) => <option key={count} value={count}>{count} personne{count > 1 ? "s" : ""}</option>)}
+              </select>
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-3">
+            <div>
+              <span className={label}>Date de retour</span>
+              <select className={field} value={returnDate} onChange={(e) => setReturnDate(e.target.value)}>
+                <option value="">Toutes</option>
+                {RETURN_DATES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <span className={label}>Ville de retour (autour de Troyes)</span>
+              <CityPicker className={field} label="Chercher une ville de retour autour de Troyes" area="troyes-2h" placeholder="Tapez une ville…" value={returnCity} onChange={setReturnCity} />
+            </div>
+            <div>
+              <span className={label}>Places nécessaires (adultes et enfants)</span>
+              <select className={field} value={people} onChange={(e) => setPeople(Number(e.target.value))}>
+                {adultChoices.map((count) => <option key={count} value={count}>{count} personne{count > 1 ? "s" : ""}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+
         <div className="mt-3 flex flex-wrap gap-2">
           <select className="rounded-full border border-[#6D1925]/10 bg-[#FFF7E9] px-3 py-1.5 text-xs" value={gender} onChange={(e) => setGender(e.target.value as "" | Gender)}>
+            <option value="">👤 Peu importe</option>
             <option value="femme">👩 Femme</option>
             <option value="homme">👨 Homme</option>
-            <option value="homme_et_femme">👫 Homme et femme</option>
-            <option value="">👤 Peu importe</option>
+            <option value="homme_et_femme">👫 Couple</option>
           </select>
           <label className="flex cursor-pointer items-center gap-2 rounded-full border border-[#6D1925]/10 bg-[#FFF7E9] px-3 py-1.5 text-xs">
             <input type="checkbox" checked={petsOnly} onChange={(e) => setPetsOnly(e.target.checked)} /> 🐶 Animaux acceptés
           </label>
         </div>
       </section>
-
       {manageUrl && <div className="rounded-xl border border-[#6D1925]/15 bg-white p-4 text-sm"><strong>Votre lien personnel :</strong> <a className="underline text-[#6D1925]" href={manageUrl}>Créer ou suivre le groupe WhatsApp de votre fiche</a>. Conservez ce lien.</div>}
 
-      {showForm && <TransportForm onClose={() => setShowForm(false)} onPublished={(url) => { setManageUrl(url); window.localStorage.setItem("last-offer-group-link", url); setShowForm(false); setType(""); setDate(""); setReturnDate(""); setDepartment(""); setArrivalCity(""); setPeople(1); setGender(""); setPetsOnly(false); window.setTimeout(() => document.getElementById("transport-offers")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30) }} source={offerSource} />}
+      {showForm && <TransportForm onClose={() => setShowForm(false)} onPublished={(url) => { setManageUrl(url); window.localStorage.setItem("last-offer-group-link", url); setShowForm(false); setType(""); setDate(""); setReturnDate(""); setDepartment(""); setReturnCity(""); setPeople(1); setGender(""); setPetsOnly(false); window.setTimeout(() => document.getElementById("transport-offers")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30) }} source={offerSource} />}
 
       {isLoading ? (
         <p className="py-10 text-center text-sm text-muted-foreground">Chargement des transports…</p>
@@ -217,7 +259,7 @@ export function TransportMarketplace() {
           <Car className="mx-auto mb-3 h-9 w-9 text-[#6D1925]/35" />
           <p className="font-medium text-[#4B242B]">Aucun transport ne correspond à ces critères.</p>
           <p className="mt-1 text-sm text-[#6D1925]/55">Essayez une autre date ou affichez tous les départements.</p>
-          <button type="button" onClick={() => { setType(""); setDate(""); setReturnDate(""); setDepartment(""); setArrivalCity(""); setPeople(1); setGender(""); setPetsOnly(false) }} className="mt-4 min-h-11 rounded-xl border border-[#6D1925]/25 bg-white px-4 text-sm font-semibold text-[#6D1925]">Afficher tous les transports</button>
+          <button type="button" onClick={() => { setType(""); setDate(""); setReturnDate(""); setDepartment(""); setReturnCity(""); setPeople(1); setGender(""); setPetsOnly(false) }} className="mt-4 min-h-11 rounded-xl border border-[#6D1925]/25 bg-white px-4 text-sm font-semibold text-[#6D1925]">Afficher tous les transports</button>
         </div>
       ) : (
         <div id="transport-offers" className="grid scroll-mt-20 gap-3 lg:grid-cols-2">
@@ -275,9 +317,6 @@ function TransportOfferCard({
           <h2 className="font-serif text-xl font-semibold text-[#6D1925]">{genderEmoji(veh.genre_conducteur)} {ownerDisplayName(veh)}</h2>
           <p className="mt-1 text-xs text-[#6D1925]/65">{veh.type_trajet === "navette" ? "🚉 Navette locale depuis une gare" : "🚗 Covoiturage"}</p>
         </div>
-        <div className="shrink-0 rounded-full bg-[#6D1925]/5 px-3 py-1.5 text-xs font-bold text-[#6D1925]">
-          🚗 {outboundAvailable || returnAvailable ? "Trajet ouvert" : "Victime de son succès ✨"}
-        </div>
       </div>
 
       <div className="p-4">
@@ -326,10 +365,10 @@ function TransportOfferCard({
         </div>
 
         <details className="mt-3 rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/35 p-3">
-          <summary className="cursor-pointer text-sm font-semibold text-[#6D1925]">Voir les détails</summary>
+          <summary className="cursor-pointer rounded-xl bg-[#6D1925] px-4 py-3 text-center text-sm font-bold text-[#FFF7E9] shadow-sm">Voir les détails</summary>
           <div className="mt-3 space-y-3">
             <div className="flex flex-wrap gap-2">
-              <Sticker>{genderEmoji(veh.genre_conducteur)} {veh.genre_conducteur === "femme" ? "Conductrice" : veh.genre_conducteur === "homme_et_femme" ? "Homme et femme" : "Conducteur"}</Sticker>
+              <Sticker>{genderEmoji(veh.genre_conducteur)} {veh.genre_conducteur === "femme" ? "Conductrice" : veh.genre_conducteur === "homme_et_femme" ? "Couple" : "Conducteur"}</Sticker>
               <Sticker>{veh.animaux_acceptes ? "🐶 Animaux OK" : "🚫🐶 Sans animaux"}</Sticker>
               <Sticker>💶 {money(Number(veh.participation || 0))} € / pers.</Sticker>
             </div>
@@ -471,7 +510,7 @@ function TransportForm({
           <Field title="Propriétaire(s) du véhicule *">
             <select className={field} value={form.genre_conducteur} onChange={(e) => set("genre_conducteur", e.target.value as Gender)}>
               <option value="femme">👩 Femme</option><option value="homme">👨 Homme</option>
-              <option value="homme_et_femme">👫 Homme et femme</option>
+              <option value="homme_et_femme">👫 Couple</option>
             </select>
           </Field>
           <Field title="Téléphone français * · visible pour les questions"><FrenchPhone className={field} value={form.telephone} onChange={(value) => set("telephone", value)} /></Field>
