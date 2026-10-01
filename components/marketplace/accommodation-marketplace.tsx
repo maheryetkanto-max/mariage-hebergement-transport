@@ -67,6 +67,14 @@ function money(value: number) {
   }).format(value)
 }
 
+function externalLinkFromComments(value: string | null) {
+  return value?.match(/https?:\/\/[^\s]+/)?.[0] ?? null
+}
+
+function commentsWithoutLink(value: string | null) {
+  return value?.replace(/(?:Lien\s*:\s*)?https?:\/\/[^\s]+/g, "").trim() ?? ""
+}
+
 function whatsappNumber(phone: string) {
   let digits = phone.replace(/\D/g, "")
   if (digits.startsWith("00")) digits = digits.slice(2)
@@ -330,10 +338,27 @@ export function AccommodationMarketplace() {
                         : "Réserver ce logement"}
                   </button>
 
-                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3"><summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary><div className="mt-3"><PeopleList people={offerPeople.find((group) => group.type === "accommodation" && group.id === acc.id)?.people ?? [{ name: (acc.propose_par ?? "Hôte").split(" ")[0], origin: acc.ville_logement, interests: acc.centres_interet ?? [] }]} /><p className="mt-3 text-xs text-[#6D1925]/65">Le téléphone est disponible pour poser une question avant réservation. L’email et l’adresse précise restent communiqués après confirmation de la place.</p></div></details>
-                  {acc.commentaires && (
+                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3">
+                    <summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary>
+                    <div className="mt-3">
+                      <PeopleList people={offerPeople.find((group) => group.type === "accommodation" && group.id === acc.id)?.people ?? [{ name: (acc.propose_par ?? "Hôte").split(" ")[0], origin: acc.ville_logement, interests: acc.centres_interet ?? [] }]} />
+                      {externalLinkFromComments(acc.commentaires) && (
+                        <a
+                          href={externalLinkFromComments(acc.commentaires) || undefined}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-4 text-sm font-semibold text-[#6D1925]"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Voir l’hébergement
+                        </a>
+                      )}
+                      <p className="mt-3 text-xs text-[#6D1925]/65">Le téléphone est disponible pour poser une question avant réservation. L’email et l’adresse précise restent communiqués après confirmation de la place.</p>
+                    </div>
+                  </details>
+                  {commentsWithoutLink(acc.commentaires) && (
                     <p className="rounded-xl bg-[#6D1925]/[0.035] p-3 text-xs leading-5 text-[#5B4549]">
-                      {acc.commentaires}
+                      {commentsWithoutLink(acc.commentaires)}
                     </p>
                   )}
                 </div>
@@ -408,6 +433,7 @@ function AccommodationForm({
     enfants_acceptes: true,
     animaux_acceptes: false,
     commentaires: "",
+    external_url: "",
     compagnons_prenoms: "",
     centres_interet: [] as string[],
   })
