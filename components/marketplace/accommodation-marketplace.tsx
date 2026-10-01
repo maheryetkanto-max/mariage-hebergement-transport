@@ -9,6 +9,7 @@ import {
   ExternalLink,
   MapPin,
   MessageCircle,
+  Phone,
   Plus,
   Search,
   Users,
@@ -64,6 +65,19 @@ function money(value: number) {
     minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(value)
+}
+
+function whatsappNumber(phone: string) {
+  let digits = phone.replace(/\D/g, "")
+  if (digits.startsWith("00")) digits = digits.slice(2)
+  if (digits.startsWith("0")) digits = "33" + digits.slice(1)
+  return digits
+}
+
+function accommodationQuestionLink(acc: Accommodation) {
+  if (!acc.telephone_proposant) return null
+  const text = `Bonjour ${acc.propose_par || ""}, j’ai une question concernant votre offre d’hébergement “${acc.nom}” pour le mariage de Mahery & Kanto.`
+  return `https://wa.me/${whatsappNumber(acc.telephone_proposant)}?text=${encodeURIComponent(text)}`
 }
 
 export function AccommodationMarketplace() {
@@ -275,6 +289,34 @@ export function AccommodationMarketplace() {
                     )}
                   </div>
 
+                  {acc.telephone_proposant && (
+                    <div className="rounded-2xl border border-[#6D1925]/10 bg-[#FFF7E9]/65 p-4">
+                      <p className="text-sm font-bold text-[#6D1925]">Une question avant de réserver ?</p>
+                      <p className="mt-1 text-xs leading-5 text-[#5B4549]">
+                        Contactez directement {acc.propose_par || "le propriétaire de cette offre"}. Vous n’avez pas besoin de réserver pour poser une question.
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-[#4B242B]">{acc.telephone_proposant}</p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <a
+                          href={accommodationQuestionLink(acc) || undefined}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 text-sm font-bold text-[#10351d]"
+                        >
+                          <MessageCircle className="h-5 w-5" />
+                          Poser une question sur WhatsApp
+                        </a>
+                        <a
+                          href={`tel:${acc.telephone_proposant.replace(/\s/g, "")}`}
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 text-sm font-semibold text-[#6D1925]"
+                        >
+                          <Phone className="h-4 w-4" />
+                          Appeler le propriétaire
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     disabled={places < 1 || !acc.reservation_active}
@@ -288,7 +330,7 @@ export function AccommodationMarketplace() {
                         : "Réserver ce logement"}
                   </button>
 
-                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3"><summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary><div className="mt-3"><PeopleList people={offerPeople.find((group) => group.type === "accommodation" && group.id === acc.id)?.people ?? [{ name: (acc.propose_par ?? "Hôte").split(" ")[0], origin: acc.ville_logement, interests: acc.centres_interet ?? [] }]} /><p className="mt-3 text-xs text-[#6D1925]/65">Téléphone, email et adresse précise disponibles après confirmation de la place.</p></div></details>
+                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3"><summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary><div className="mt-3"><PeopleList people={offerPeople.find((group) => group.type === "accommodation" && group.id === acc.id)?.people ?? [{ name: (acc.propose_par ?? "Hôte").split(" ")[0], origin: acc.ville_logement, interests: acc.centres_interet ?? [] }]} /><p className="mt-3 text-xs text-[#6D1925]/65">Le téléphone est disponible pour poser une question avant réservation. L’email et l’adresse précise restent communiqués après confirmation de la place.</p></div></details>
                   {acc.commentaires && (
                     <p className="rounded-xl bg-[#6D1925]/[0.035] p-3 text-xs leading-5 text-[#5B4549]">
                       {acc.commentaires}
@@ -440,7 +482,7 @@ function AccommodationForm({
               <option value="homme">👨 Homme</option>
             </select>
           </Field>
-          <Field title="Téléphone *">
+          <Field title="Téléphone * · visible pour les questions">
             <FrenchPhone className={field} value={form.telephone_proposant} onChange={(value) => set("telephone_proposant", value)} />
           </Field>
           <Field title="Email *">

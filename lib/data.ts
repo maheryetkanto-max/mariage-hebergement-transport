@@ -32,7 +32,7 @@ async function fetchGuests(): Promise<Guest[]> {
 async function fetchAccommodations(): Promise<Accommodation[]> {
   const { data, error } = await supabase
     .from("accommodations")
-    .select("id,nom,type,ville_logement,capacite,commentaires,propose_par,genre_proposant,compagnons_prenoms,centres_interet,places_disponibles,minutes_salle,date_entree,date_sortie,prix_personne_nuit,prix_mode,nuits_minimum,enfants_acceptes,animaux_acceptes,actif,source,reservation_active,created_at")
+    .select("id,nom,type,ville_logement,capacite,commentaires,propose_par,genre_proposant,telephone_proposant,compagnons_prenoms,centres_interet,places_disponibles,minutes_salle,date_entree,date_sortie,prix_personne_nuit,prix_mode,nuits_minimum,enfants_acceptes,animaux_acceptes,actif,source,reservation_active,created_at")
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as Accommodation[]
@@ -41,7 +41,7 @@ async function fetchAccommodations(): Promise<Accommodation[]> {
 async function fetchVehicles(): Promise<Vehicle[]> {
   const { data, error } = await supabase
     .from("vehicles")
-    .select("id,conducteur,compagnons_prenoms,centres_interet,heure_depart,places,commentaires,genre_conducteur,type_trajet,ville_depart,destination,date_depart,date_retour,heure_retour,retour_lieu_depart,retour_ville_arrivee,places_disponibles,gratuit,participation,animaux_acceptes,actif,source,reservation_active,created_at")
+    .select("id,conducteur,telephone,compagnons_prenoms,centres_interet,heure_depart,places,commentaires,genre_conducteur,type_trajet,ville_depart,destination,date_depart,date_retour,heure_retour,retour_lieu_depart,retour_ville_arrivee,places_disponibles,gratuit,participation,animaux_acceptes,actif,source,reservation_active,created_at")
     .order("created_at", { ascending: false })
   if (error) throw error
   return (data ?? []) as Vehicle[]
