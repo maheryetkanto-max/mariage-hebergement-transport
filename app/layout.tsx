@@ -15,6 +15,7 @@ const cormorant = Cormorant_Garamond({
 export const metadata: Metadata = {
   metadataBase: new URL("https://mariage-mk-app.vercel.app"),
   title: "Mahery & Kanto — Hébergement & Transport",
+  applicationName: "Mahery & Kanto",
   description:
     "Trouvez ou proposez un hébergement et un transport pour le mariage de Mahery & Kanto.",
   openGraph: {
