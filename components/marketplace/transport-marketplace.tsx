@@ -264,8 +264,6 @@ function TransportForm({
   source: "invite" | "admin"
 }) {
   const [saving, setSaving] = useState(false)
-  const [confirmed, setConfirmed] = useState(false)
-  const [emailSent, setEmailSent] = useState(true)
   const [form, setForm] = useState({
     conducteur: "",
     genre_conducteur: "femme" as Gender,
@@ -413,6 +411,8 @@ function TransportReservationDialog({
   onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
+  const [confirmed, setConfirmed] = useState(false)
+  const [emailSent, setEmailSent] = useState(true)
   const [form, setForm] = useState({
     nom: "",
     email: "",
