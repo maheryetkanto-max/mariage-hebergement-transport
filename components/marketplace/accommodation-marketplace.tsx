@@ -183,7 +183,7 @@ export function AccommodationMarketplace() {
           </div>
           <div>
             <span className={label}>Ville du logement</span>
-            <CityPicker className={field} label="Chercher la ville du logement" area="idf-aube" placeholder="Troyes, Massy…" value={city} onChange={setCity} />
+            <CityPicker className={field} label="Chercher la ville du logement" area="troyes-2h" placeholder="Troyes, Saint-Benoît-sur-Seine…" value={city} onChange={setCity} />
           </div>
           <div>
             <span className={label}>Places adultes nécessaires</span>
@@ -283,7 +283,7 @@ export function AccommodationMarketplace() {
                         : "Prix par personne / nuit"}
                     </p>
                     <p className="mt-1 font-serif text-3xl font-bold text-[#6D1925]">
-                      {unitPrice === 0 ? "Gratuit" : money(unitPrice) + " €"}
+                      {money(unitPrice) + " €"}
                     </p>
                     {fixedStay && acc.nuits_minimum > 1 && (
                       <p className="mt-1 text-base font-bold text-[#6D1925]">
@@ -303,8 +303,7 @@ export function AccommodationMarketplace() {
                       <p className="mt-1 text-xs leading-5 text-[#5B4549]">
                         Contactez directement {acc.propose_par || "le propriétaire de cette offre"}. Vous n’avez pas besoin de réserver pour poser une question.
                       </p>
-                      <p className="mt-2 text-sm font-semibold text-[#4B242B]">{acc.telephone_proposant}</p>
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <div className="mt-3 grid gap-2 sm:grid-cols-3">
                         <a
                           href={accommodationQuestionLink(acc) || undefined}
                           target="_blank"
@@ -319,7 +318,14 @@ export function AccommodationMarketplace() {
                           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 text-sm font-semibold text-[#6D1925]"
                         >
                           <Phone className="h-4 w-4" />
-                          Appeler le propriétaire
+                          Appeler
+                        </a>
+                        <a
+                          href={`sms:${acc.telephone_proposant.replace(/\s/g, "")}`}
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 text-sm font-semibold text-[#6D1925]"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          Envoyer un message
                         </a>
                       </div>
                     </div>
@@ -353,7 +359,7 @@ export function AccommodationMarketplace() {
                           Voir l’hébergement
                         </a>
                       )}
-                      <p className="mt-3 text-xs text-[#6D1925]/65">Le téléphone est disponible pour poser une question avant réservation. L’email et l’adresse précise restent communiqués après confirmation de la place.</p>
+                      <p className="mt-3 text-xs text-[#6D1925]/65">Vous pouvez poser une question par WhatsApp, appel ou SMS avant de réserver. L’email et l’adresse précise restent privés jusqu’à confirmation.</p>
                     </div>
                   </details>
                   {commentsWithoutLink(acc.commentaires) && (
@@ -447,8 +453,8 @@ function AccommodationForm({
       toast.error("Merci de compléter le nom, le téléphone, l’email, le logement et l’adresse.")
       return
     }
-    if (!isListedCity(form.ville_logement, "idf-aube")) {
-      toast.error("Choisissez la ville du logement dans la liste (Aube ou Île-de-France).")
+    if (!isListedCity(form.ville_logement, "troyes-2h")) {
+      toast.error("Choisissez une ville autour de Troyes dans la liste.")
       return
     }
     if (form.date_sortie <= form.date_entree) {
@@ -534,7 +540,7 @@ function AccommodationForm({
           <AddressPicker className={field} label="Adresse exacte du logement" city={form.ville_logement} value={form.adresse} onChange={(value) => set("adresse", value)} />
         </Field>
 
-        <div><span className={label}>Ville du logement (Aube ou Île-de-France) *</span><CityPicker className={field} label="Ville du logement" area="idf-aube" placeholder="Tapez une ville…" value={form.ville_logement} onChange={(value) => set("ville_logement", value)} /></div>
+        <div><span className={label}>Ville du logement · autour de Troyes *</span><CityPicker className={field} label="Ville du logement" area="troyes-2h" placeholder="Tapez une ville…" value={form.ville_logement} onChange={(value) => set("ville_logement", value)} /></div>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <Field title="Places adultes disponibles *">
@@ -737,14 +743,24 @@ function AccommodationReservationDialog({
 
         {confirmation ? (
           <div className="mt-5 grid gap-4 rounded-2xl border border-[#6D1925]/10 bg-white/75 p-5">
-            <h3 className="font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée</h3>
-            <p className="rounded-xl bg-[#FFF7E9] p-4 text-sm font-semibold leading-6 text-[#6D1925]">
-              Votre place est réservée. Contactez maintenant la personne qui propose cet hébergement pour finaliser les détails et vous assurer que tout se passe correctement.
+            <h3 className="animate-pulse font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée ✓</h3>
+            <p className="animate-pulse rounded-xl bg-[#FFF7E9] p-4 text-sm font-semibold leading-6 text-[#6D1925]">
+              Vous pouvez maintenant contacter l’hôte pour finaliser votre séjour.
             </p>
             {!confirmation.emailSent && (
               <p className="text-xs text-[#6D1925]/65">La réservation est bien enregistrée ; seule la notification automatique par email n’a pas abouti.</p>
             )}
-            {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]"><p className="font-semibold">Contact : {confirmation.providerContact.name}</p>{confirmation.providerContact.phone && <a className="block underline" href={`tel:${confirmation.providerContact.phone}`}>{confirmation.providerContact.phone}</a>}{confirmation.providerContact.email && <a className="block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}{confirmation.providerContact.address && <a className="block underline" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(confirmation.providerContact.address)}`}>📍 Voir le lieu de prise en charge sur Google Maps : {confirmation.providerContact.address}</a>}{confirmation.providerContact.members?.length > 0 && <div className="mt-3 border-t border-[#6D1925]/10 pt-3"><p className="font-semibold">Autres participants confirmés</p>{confirmation.providerContact.members.map((member, i) => <p key={`${member.email}-${i}`}>{member.name} · <a className="underline" href={`mailto:${member.email}`}>{member.email}</a></p>)}</div>}</div>}
+            {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]">
+              <p className="font-semibold">Contact : {confirmation.providerContact.name}</p>
+              {confirmation.providerContact.phone && <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <a target="_blank" rel="noopener noreferrer" href={`https://wa.me/${whatsappNumber(confirmation.providerContact.phone)}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 font-semibold text-[#10351d]"><MessageCircle className="h-4 w-4" /> WhatsApp</a>
+                <a href={`tel:${confirmation.providerContact.phone}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 font-semibold text-[#6D1925]"><Phone className="h-4 w-4" /> Appeler</a>
+                <a href={`sms:${confirmation.providerContact.phone}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 font-semibold text-[#6D1925]"><MessageCircle className="h-4 w-4" /> Message</a>
+              </div>}
+              {confirmation.providerContact.email && <a className="mt-3 block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}
+              {confirmation.providerContact.address && <a className="mt-3 block underline" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(confirmation.providerContact.address)}`}>📍 Ouvrir l’adresse dans Google Maps</a>}
+              {confirmation.providerContact.members?.length > 0 && <div className="mt-3 border-t border-[#6D1925]/10 pt-3"><p className="font-semibold">Autres participants confirmés</p>{confirmation.providerContact.members.map((member, i) => <p key={`${member.email}-${i}`}>{member.name} · <a className="underline" href={`mailto:${member.email}`}>{member.email}</a></p>)}</div>}
+            </div>}
             <a href={confirmation.cancellationUrl} className="text-sm font-semibold underline text-[#6D1925]">Conserver mon lien pour annuler cette place si besoin</a>
             {!confirmation.whatsappUrl && <a href={confirmation.groupUrl} className="text-sm font-semibold underline text-[#6D1925]">Voir le groupe WhatsApp ou le créer à partir de trois personnes</a>}
             {confirmation.whatsappUrl && <a href={confirmation.whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-[#10351d]"><MessageCircle className="h-5 w-5" /> Rejoindre le groupe WhatsApp</a>}
@@ -803,7 +819,7 @@ function AccommodationReservationDialog({
           <div className="rounded-2xl border border-[#6D1925]/10 bg-white/70 p-4">
             <p className="text-xs uppercase tracking-wide text-[#6D1925]/55">Montant calculé automatiquement</p>
             <p className="mt-1 font-serif text-3xl font-semibold text-[#6D1925]">
-              {total === 0 ? "Gratuit" : money(total) + " €"}
+              {money(total) + " €"}
             </p>
             <p className="mt-1 text-xs text-[#5B4549]">
               {form.nbPersonnes} personne{form.nbPersonnes > 1 ? "s" : ""} × {nights} nuit{nights > 1 ? "s" : ""} × {Number(acc.prix_personne_nuit || 0).toFixed(0)} €
