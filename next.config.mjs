@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: "renewed",
   typescript: {
     ignoreBuildErrors: true,
   },
