@@ -15,7 +15,7 @@ const staticCities: Record<Exclude<CityArea, "troyes-2h">, CityEntry[]> = {
 }
 
 const TROYEs = { lat: 48.2973, lon: 4.0744 }
-const TROYEs_DEPARTMENTS = ["10", "51", "52", "89", "21", "77", "55"]
+const TROYEs_DEPARTMENTS = ["08", "10", "21", "45", "51", "52", "55", "58", "77", "89"]
 const TROYEs_RADIUS_KM = 155
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
