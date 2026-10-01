@@ -27,9 +27,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og-mahery-kanto.jpg",
-        width: 320,
-        height: 168,
+        url: "/og-photo",
+        width: 382,
+        height: 200,
         alt: "Mahery et Kanto",
       },
     ],
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     title: "Mahery & Kanto — Mariage du 31 décembre 2026",
     description:
       "Hébergement & transport pour le mariage de Mahery & Kanto.",
-    images: ["/og-mahery-kanto.jpg"],
+    images: ["/og-photo"],
   },
 }
 
