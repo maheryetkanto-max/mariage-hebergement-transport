@@ -884,7 +884,9 @@ function AccommodationReservationDialog({
               {money(total) + " €"}
             </p>
             <p className="mt-1 text-xs text-[#5B4549]">
-              {form.nbPersonnes} personne{form.nbPersonnes > 1 ? "s" : ""} × {nights} nuit{nights > 1 ? "s" : ""} × {Number(acc.prix_personne_nuit || 0).toFixed(0)} €
+              {acc.prix_mode === "fixed_stay"
+                ? <>{form.nbPersonnes} personne{form.nbPersonnes > 1 ? "s" : ""} × {money(Number(acc.prix_personne_nuit || 0))} € pour le séjour de {nights} nuit{nights > 1 ? "s" : ""}</>
+                : <>{form.nbPersonnes} personne{form.nbPersonnes > 1 ? "s" : ""} × {nights} nuit{nights > 1 ? "s" : ""} × {Number(acc.prix_personne_nuit || 0).toFixed(0)} €</>}
             </p>
           </div>
 
