@@ -307,7 +307,6 @@ export async function reserveAccommodation(input: ReservationContact & {
     p_date_sortie: input.dateSortie,
     p_consentement_coordonnees: input.consentement,
     p_profile: input.profile,
-    p_trajet_sens: input.trajetSens,
   })
   if (error) throw error
 
@@ -345,6 +344,7 @@ export async function reserveVehicle(input: ReservationContact & {
     p_nb_personnes: input.nbPersonnes,
     p_consentement_coordonnees: input.consentement,
     p_profile: input.profile,
+    p_trajet_sens: input.trajetSens,
   })
   if (error) throw error
 

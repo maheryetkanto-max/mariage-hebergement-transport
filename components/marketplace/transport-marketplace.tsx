@@ -74,6 +74,24 @@ function ownerDisplayName(veh: Vehicle) {
   return companion ? `${main} & ${firstName(companion)}` : main
 }
 
+function cityWithDepartment(city: string | null) {
+  if (!city) return "À préciser"
+  const department = idfDepartment(city)
+  return department ? `${city} (${department})` : city
+}
+
+function uniqueReturnPeople(
+  outboundPeople: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[],
+  returnPeople: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[],
+) {
+  const outboundNames = new Set(outboundPeople.map((person) => normalizeCity(person.name)))
+  return returnPeople.map((person) =>
+    outboundNames.has(normalizeCity(person.name))
+      ? { ...person, interests: [] }
+      : person,
+  )
+}
+
 export function TransportMarketplace() {
   const { data: vehicles = [], isLoading } = useVehicles()
   const { data: offerPeople = [] } = useOfferPeople()
@@ -267,7 +285,7 @@ function TransportOfferCard({
           <div>
             <p className="font-bold uppercase tracking-wide text-[#6D1925]/55">Aller</p>
             <p className="mt-1 font-semibold text-[#4B242B]">{dateLabel(veh.date_depart)}{veh.heure_depart ? ` · ${veh.heure_depart}` : ""}</p>
-            <p className="mt-1">{veh.type_trajet === "navette" ? `Gare de ${veh.ville_depart || "à préciser"}` : veh.ville_depart || "Départ à préciser"} → {destination}</p>
+            <p className="mt-1">{veh.type_trajet === "navette" ? `Gare de ${veh.ville_depart || "à préciser"}` : cityWithDepartment(veh.ville_depart)} → {destination}</p>
             <div className={`mt-2 inline-flex items-center rounded-full px-2.5 py-1 font-bold ${outboundAvailable ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
               <span className={`mr-1.5 h-2 w-2 animate-pulse rounded-full ${outboundAvailable ? "bg-emerald-500" : "bg-rose-500"}`} />
               {outboundAvailable ? (outboundPlaces === 1 ? "Disponible · 1 place" : `Disponible · ${outboundPlaces} places`) : "Victime de son succès ✨"}
@@ -285,7 +303,7 @@ function TransportOfferCard({
             <p className="font-bold uppercase tracking-wide text-[#6D1925]/55">Retour</p>
             {veh.date_retour ? <>
               <p className="mt-1 font-semibold text-[#4B242B]">{dateLabel(veh.date_retour)}{veh.heure_retour ? ` · ${veh.heure_retour}` : ""}</p>
-              <p className="mt-1">{veh.retour_lieu_depart || "Départ à préciser"} → {veh.retour_ville_arrivee || "Destination à préciser"}</p>
+              <p className="mt-1">{veh.retour_lieu_depart || "Départ à préciser"} → {cityWithDepartment(veh.retour_ville_arrivee)}</p>
               <div className={`mt-2 inline-flex items-center rounded-full px-2.5 py-1 font-bold ${returnAvailable ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
                 <span className={`mr-1.5 h-2 w-2 animate-pulse rounded-full ${returnAvailable ? "bg-emerald-500" : "bg-rose-500"}`} />
                 {returnAvailable ? (returnPlaces === 1 ? "Disponible · 1 place" : `Disponible · ${returnPlaces} places`) : "Victime de son succès ✨"}
@@ -323,7 +341,7 @@ function TransportOfferCard({
               </div>
               {veh.date_retour && <div className="rounded-xl bg-white/70 p-3">
                 <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#6D1925]/55">Personnes confirmées · Retour</p>
-                {returnPeople.length ? <PeopleList people={returnPeople} /> : <p className="text-xs text-[#6D1925]/55">Aucune réservation confirmée pour le retour.</p>}
+                {returnPeople.length ? <PeopleList people={uniqueReturnPeople(outboundPeople, returnPeople)} /> : <p className="text-xs text-[#6D1925]/55">Aucune réservation confirmée pour le retour.</p>}
               </div>}
             </div>
 
@@ -631,10 +649,10 @@ function TransportReservationDialog({
         <div className="mt-4 rounded-2xl border border-[#6D1925]/10 bg-white/70 p-4 text-sm text-[#5B4549]">
           {trajetSens === "aller" ? <>
             <strong>{dateLabel(veh.date_depart)}</strong>{veh.heure_depart ? " à " + veh.heure_depart : ""}
-            <br />{veh.ville_depart || "Départ à confirmer"}{veh.destination ? " → " + veh.destination : ""}
+            <br />{cityWithDepartment(veh.ville_depart)}{veh.destination ? " → " + veh.destination : ""}
           </> : <>
             <strong>{dateLabel(veh.date_retour)}</strong>{veh.heure_retour ? " à " + veh.heure_retour : ""}
-            <br />{veh.retour_lieu_depart || "Départ à confirmer"} → {veh.retour_ville_arrivee || "Destination à confirmer"}
+            <br />{veh.retour_lieu_depart || "Départ à confirmer"} → {cityWithDepartment(veh.retour_ville_arrivee)}
           </>}
         </div>
 
