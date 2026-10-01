@@ -341,8 +341,6 @@ function AccommodationForm({
   source: "invite" | "admin"
 }) {
   const [saving, setSaving] = useState(false)
-  const [confirmed, setConfirmed] = useState(false)
-  const [emailSent, setEmailSent] = useState(true)
   const [form, setForm] = useState({
     propose_par: "",
     genre_proposant: "femme" as Gender,
@@ -550,6 +548,8 @@ function AccommodationReservationDialog({
   onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
+  const [confirmed, setConfirmed] = useState(false)
+  const [emailSent, setEmailSent] = useState(true)
   const [form, setForm] = useState({
     nom: "",
     email: "",
