@@ -226,7 +226,7 @@ export function AccommodationMarketplace() {
                     </div>
                     <div className={"shrink-0 rounded-xl px-3 py-2 text-center text-[#FFF7E9] " + (places <= 4 && places > 0 ? "bg-[#8E2D18]" : "bg-[#6D1925]")}>
                       {places <= 4 && places > 0 && (
-                        <div className="mb-1 text-[9px] font-bold uppercase tracking-wide">Bientôt complet</div>
+                        <div className="mb-1 text-[9px] font-bold uppercase tracking-wide">Bientôt plus disponible</div>
                       )}
                       <div className="text-xl font-bold">{places}</div>
                       <div className="text-[10px] uppercase tracking-wide">
@@ -284,7 +284,7 @@ export function AccommodationMarketplace() {
                       ? "Complet"
                       : !acc.reservation_active
                         ? "Coordonnées indisponibles"
-                        : "Confirmer ma place"}
+                        : "Réserver ce logement"}
                   </button>
 
                   <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3"><summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary><div className="mt-3"><PeopleList people={offerPeople.find((group) => group.type === "accommodation" && group.id === acc.id)?.people ?? [{ name: (acc.propose_par ?? "Hôte").split(" ")[0], origin: acc.ville_logement, interests: acc.centres_interet ?? [] }]} /><p className="mt-3 text-xs text-[#6D1925]/65">Téléphone, email et adresse précise disponibles après confirmation de la place.</p></div></details>
