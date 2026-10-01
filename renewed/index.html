@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Mahery & Kanto — Hébergement & Transport</title>
+  <meta name="description" content="Hébergement et transport pour le mariage de Mahery & Kanto — 31 décembre 2026." />
+  <meta name="theme-color" content="#6D1925" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Mahery & Kanto — Mariage du 31 décembre 2026" />
+  <meta property="og:description" content="Hébergement & transport entre invités pour le mariage de Mahery & Kanto." />
+  <meta property="og:url" content="https://maheryetkanto-max.github.io/mariage-hebergement-transport/" />
+  <meta property="og:image" content="https://maheryetkanto-max.github.io/mariage-hebergement-transport/og-mahery-kanto.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Mahery & Kanto — Mariage du 31 décembre 2026" />
+  <meta name="twitter:image" content="https://maheryetkanto-max.github.io/mariage-hebergement-transport/og-mahery-kanto.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand" onclick="location.hash='home'">
+      <strong>Mahery & Kanto</strong>
+      <span>Hébergement & transport</span>
+    </div>
+    <nav class="nav" aria-label="Navigation principale">
+      <button data-route="home">⌂ <span>Accueil</span></button>
+      <button data-route="hebergement">▱ <span>Hébergement</span></button>
+      <button data-route="transport">▱ <span>Transport</span></button>
+      <a href="https://mahery-et-kanto.fr" target="_blank" rel="noopener">◎ <span>Notre site</span></a>
+    </nav>
+  </header>
+  <main id="app" class="shell"></main>
+  <button id="musicBtn" class="music-btn" aria-label="Lire notre chanson">▶ <span>Play</span></button>
+  <div id="musicHost" aria-hidden="true"></div>
+  <div id="modalRoot"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <datalist id="troyesCities"></datalist>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
