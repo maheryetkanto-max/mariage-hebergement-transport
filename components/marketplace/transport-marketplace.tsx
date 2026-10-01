@@ -623,14 +623,40 @@ function TransportReservationDialog({
 
   const total = form.nbPersonnes * Number(veh.participation || 0)
 
+  useEffect(() => {
+    const target = Math.max(0, form.nbPersonnes - 1)
+    setBookedPeople((current) => {
+      if (current.length === target) return current
+      if (current.length > target) return current.slice(0, target)
+      return [
+        ...current,
+        ...Array.from({ length: target - current.length }, () => ({
+          firstName: "",
+          lastName: "",
+          kind: "adult" as const,
+          gender: undefined,
+          phone: "+33",
+        })),
+      ]
+    })
+  }, [form.nbPersonnes])
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.nom.trim() || !form.email.trim() || !isFrenchPhone(form.telephone)) {
       toast.error("Merci de renseigner votre nom, email et téléphone.")
       return
     }
-    if (bookedPeople.length !== form.nbPersonnes - 1 || bookedPeople.some((person) => !person.firstName.trim() || !person.lastName.trim())) {
-      toast.error("Indiquez le prénom et le nom de chaque adulte ou enfant qui prend une place.")
+    if (
+      bookedPeople.length !== form.nbPersonnes - 1 ||
+      bookedPeople.some((person) =>
+        !person.firstName.trim() ||
+        !person.lastName.trim() ||
+        !person.gender ||
+        !isFrenchPhone(person.phone ?? "")
+      )
+    ) {
+      toast.error("Pour chaque personne ajoutée, indiquez prénom, nom, sexe et téléphone.")
       return
     }
     if (!form.consentement) {
@@ -648,7 +674,18 @@ function TransportReservationDialog({
         telephone: form.telephone,
         genre: form.genre,
         nbPersonnes: form.nbPersonnes,
-        profile: { origin: form.origin, companions: bookedPeople.map(personLabel), interests: form.interests, luggage: form.luggage },
+        profile: {
+          origin: form.origin,
+          companions: bookedPeople.map(personLabel),
+          companionContacts: bookedPeople.map((person) => ({
+            name: `${person.firstName.trim()} ${person.lastName.trim()}`,
+            gender: person.gender!,
+            phone: person.phone!,
+            kind: person.kind,
+          })),
+          interests: form.interests,
+          luggage: form.luggage,
+        },
         consentement: form.consentement,
       })
       if (result.emailSent) {
@@ -697,9 +734,9 @@ function TransportReservationDialog({
 
         {confirmation ? (
           <div className="mt-5 grid gap-4 rounded-2xl border border-[#6D1925]/10 bg-white/75 p-5">
-            <h3 className="animate-pulse font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée ✓</h3>
-            <p className="animate-pulse rounded-xl bg-[#FFF7E9] p-4 text-sm font-semibold leading-6 text-[#6D1925]">
-              Vous pouvez maintenant contacter le conducteur pour finaliser le trajet.
+            <h3 className="animate-pulse font-serif text-2xl font-semibold text-[#6D1925]">Félicitations 🎉</h3>
+            <p className="rounded-xl bg-[#FFF7E9] p-4 text-sm font-semibold leading-6 text-[#6D1925]">
+              Tu as bien réservé ton {trajetSens === "aller" ? "aller" : "retour"} avec {ownerDisplayName(veh)}. Maintenant, contacte directement le conducteur pour finaliser le trajet.
             </p>
             {!confirmation.emailSent && (
               <p className="text-xs text-[#6D1925]/65">La réservation est bien enregistrée ; seule la notification automatique par email n’a pas abouti.</p>
@@ -723,7 +760,7 @@ function TransportReservationDialog({
         ) : <form onSubmit={submit} className="mt-5 grid gap-4">
           <p className="text-sm text-[#5B4549]">Vos prénom et nom sont nécessaires pour confirmer la place. Seuls vos prénoms et centres d’intérêt seront visibles par les autres invités ; vos coordonnées restent privées.</p>
           <Field title="Ville d’où vous venez (facultatif)"><input className={field} maxLength={80} value={form.origin} onChange={(e) => setForm((s) => ({ ...s, origin: e.target.value }))} /></Field>
-          <NamedPeople title="Chaque autre adulte ou enfant qui prend une place avec vous (prénom et nom)" value={bookedPeople} onChange={setBookedPeople} />
+          {form.nbPersonnes > 1 && <NamedPeople collectContact title="Informations obligatoires pour chaque autre personne réservée" value={bookedPeople} onChange={setBookedPeople} />}
           <Field title="Taille de votre bagage"><select className={field} value={form.luggage} onChange={(e) => setForm((s) => ({ ...s, luggage: e.target.value as typeof s.luggage }))}><option value="petit">👜 Petit</option><option value="moyen">🧳 Moyen</option><option value="gros">🧳 Gros</option></select></Field>
           <InterestChoices value={form.interests} onChange={(interests) => setForm((s) => ({ ...s, interests }))} />
           <div className="grid gap-4 sm:grid-cols-2">
@@ -787,6 +824,13 @@ function TransportReservationDialog({
             className="min-h-12 rounded-xl bg-[#6D1925] px-5 text-sm font-semibold text-[#FFF7E9] disabled:opacity-60"
           >
             {saving ? "Confirmation…" : "Confirmer la réservation"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-11 rounded-xl border border-[#6D1925]/20 bg-white px-5 text-sm font-semibold text-[#6D1925]"
+          >
+            Annuler
           </button>
         </form>}
       </div>
