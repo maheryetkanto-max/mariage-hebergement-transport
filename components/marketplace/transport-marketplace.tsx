@@ -75,8 +75,7 @@ export function TransportMarketplace() {
   const [department, setDepartment] = useState("")
   const [arrivalCity, setArrivalCity] = useState("")
   const [people, setPeople] = useState(1)
-  const [gender, setGender] = useState<"" | Gender>("")
-  const [freeOnly, setFreeOnly] = useState(false)
+  const [gender, setGender] = useState<"" | Gender>("femme")
   const [petsOnly, setPetsOnly] = useState(false)
   const [bookingVehicle, setBookingVehicle] = useState<Vehicle | null>(null)
 
@@ -96,17 +95,15 @@ export function TransportMarketplace() {
     const returnQuery = normalizeCity(arrivalCity)
     return vehicles
       .filter((v) => v.actif !== false)
-      .filter((v) => (v.places_disponibles ?? v.places) >= people)
       .filter((v) => !type || (type === "navette" ? v.type_trajet === "navette" : type === "church" ? normalizeCity(v.destination ?? "").includes("eglise") : normalizeCity(v.destination ?? "").includes("salle") || normalizeCity(v.destination ?? "").includes("clos belair")))
       .filter((v) => !date || v.date_depart === date)
       .filter((v) => !returnDate || v.date_retour === returnDate)
       .filter((v) => !gender || v.genre_conducteur === gender)
-      .filter((v) => !freeOnly || v.gratuit)
       .filter((v) => !petsOnly || v.animaux_acceptes)
       .filter((v) => !department || idfDepartment(v.ville_depart ?? "") === department)
       .filter((v) => !returnQuery || normalizeCity(v.retour_ville_arrivee ?? "").includes(returnQuery))
       .sort((a, b) => (a.ville_depart ?? "").localeCompare(b.ville_depart ?? "", "fr", { sensitivity: "base" }))
-  }, [vehicles, type, date, returnDate, department, arrivalCity, people, gender, freeOnly, petsOnly])
+  }, [vehicles, type, date, returnDate, department, arrivalCity, people, gender, petsOnly])
 
   return (
     <div className="space-y-6">
@@ -133,8 +130,8 @@ export function TransportMarketplace() {
             <select className={field} value={type} onChange={(e) => setType(e.target.value as typeof type)}>
               <option value="">Tous</option>
               <option value="church">Île-de-France → Église</option>
-              <option value="venue">Île-de-France → Clos Belair</option>
-              <option value="navette">Navette locale</option>
+              <option value="venue">Île-de-France → Salle de réception</option>
+              <option value="navette">Navette locale depuis une gare autour de Troyes</option>
             </select>
           </div>
           <div>
@@ -165,14 +162,11 @@ export function TransportMarketplace() {
         {returnDate && <div className="mt-3 max-w-sm"><span className={label}>Ville de dépose au retour (Île-de-France)</span><CityPicker className={field} label="Chercher la ville de dépose au retour" area="idf" placeholder="Tapez une ville…" value={arrivalCity} onChange={setArrivalCity} /></div>}
         <div className="mt-3 flex flex-wrap gap-2">
           <select className="rounded-full border border-[#6D1925]/10 bg-[#FFF7E9] px-3 py-1.5 text-xs" value={gender} onChange={(e) => setGender(e.target.value as "" | Gender)}>
-            <option value="">👤 Propriétaire : peu importe</option>
             <option value="femme">👩 Femme</option>
             <option value="homme">👨 Homme</option>
             <option value="homme_et_femme">👫 Homme et femme</option>
+            <option value="">👤 Peu importe</option>
           </select>
-          <label className="flex cursor-pointer items-center gap-2 rounded-full border border-[#6D1925]/10 bg-[#FFF7E9] px-3 py-1.5 text-xs">
-            <input type="checkbox" checked={freeOnly} onChange={(e) => setFreeOnly(e.target.checked)} /> Gratuit uniquement
-          </label>
           <label className="flex cursor-pointer items-center gap-2 rounded-full border border-[#6D1925]/10 bg-[#FFF7E9] px-3 py-1.5 text-xs">
             <input type="checkbox" checked={petsOnly} onChange={(e) => setPetsOnly(e.target.checked)} /> 🐶 Animaux acceptés
           </label>
@@ -181,7 +175,7 @@ export function TransportMarketplace() {
 
       {manageUrl && <div className="rounded-xl border border-[#6D1925]/15 bg-white p-4 text-sm"><strong>Votre lien personnel :</strong> <a className="underline text-[#6D1925]" href={manageUrl}>Créer ou suivre le groupe WhatsApp de votre fiche</a>. Conservez ce lien.</div>}
 
-      {showForm && <TransportForm onClose={() => setShowForm(false)} onPublished={(url) => { setManageUrl(url); window.localStorage.setItem("last-offer-group-link", url); setShowForm(false); setType(""); setDate(""); setReturnDate(""); setDepartment(""); setArrivalCity(""); setPeople(1); setGender(""); setFreeOnly(false); setPetsOnly(false); window.setTimeout(() => document.getElementById("transport-offers")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30) }} source={offerSource} />}
+      {showForm && <TransportForm onClose={() => setShowForm(false)} onPublished={(url) => { setManageUrl(url); window.localStorage.setItem("last-offer-group-link", url); setShowForm(false); setType(""); setDate(""); setReturnDate(""); setDepartment(""); setArrivalCity(""); setPeople(1); setGender("femme"); setPetsOnly(false); window.setTimeout(() => document.getElementById("transport-offers")?.scrollIntoView({ behavior: "smooth", block: "start" }), 30) }} source={offerSource} />}
 
       {isLoading ? (
         <p className="py-10 text-center text-sm text-muted-foreground">Chargement des transports…</p>
@@ -190,132 +184,18 @@ export function TransportMarketplace() {
           <Car className="mx-auto mb-3 h-9 w-9 text-[#6D1925]/35" />
           <p className="font-medium text-[#4B242B]">Aucun transport ne correspond à ces critères.</p>
           <p className="mt-1 text-sm text-[#6D1925]/55">Essayez une autre date ou affichez tous les départements.</p>
-          <button type="button" onClick={() => { setType(""); setDate(""); setReturnDate(""); setDepartment(""); setArrivalCity(""); setPeople(1); setGender(""); setFreeOnly(false); setPetsOnly(false) }} className="mt-4 min-h-11 rounded-xl border border-[#6D1925]/25 bg-white px-4 text-sm font-semibold text-[#6D1925]">Afficher tous les transports</button>
+          <button type="button" onClick={() => { setType(""); setDate(""); setReturnDate(""); setDepartment(""); setArrivalCity(""); setPeople(1); setGender("femme"); setPetsOnly(false) }} className="mt-4 min-h-11 rounded-xl border border-[#6D1925]/25 bg-white px-4 text-sm font-semibold text-[#6D1925]">Afficher tous les transports</button>
         </div>
       ) : (
-        <div id="transport-offers" className="grid scroll-mt-20 gap-4 lg:grid-cols-2">
-          {filtered.map((veh) => {
-            const places = veh.places_disponibles ?? veh.places
-            return (
-              <article key={veh.id} className="overflow-hidden rounded-2xl border border-[#6D1925]/10 bg-white shadow-[0_8px_30px_rgba(109,25,37,0.06)]">
-                <div className="border-b border-[#6D1925]/8 bg-[#FFF7E9]/55 p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="font-serif text-2xl font-semibold text-[#6D1925]">{genderEmoji(veh.genre_conducteur)} {veh.conducteur}</h2>
-                        <span className="rounded-full border border-[#6D1925]/15 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#6D1925]/70">{veh.type_trajet === "navette" ? "🚉 Navette locale" : "🚗 Covoiturage"}</span>
-                      </div>
-                      <p className="mt-1 text-sm text-[#5B4549]">
-                        {veh.gratuit ? <strong className="text-emerald-700">Gratuit</strong> : <strong>{money(Number(veh.participation || 0))} € / personne</strong>}
-                      </p>
-                    </div>
-                    <div className={"shrink-0 rounded-xl px-3 py-2 text-center text-[#FFF7E9] " + (places <= 4 && places > 0 ? "bg-[#8E2D18]" : "bg-[#6D1925]")}>
-                      {places <= 4 && places > 0 && (
-                        <div className="mb-1 text-[9px] font-bold uppercase tracking-wide">Bientôt plus disponible</div>
-                      )}
-                      <div className="text-xl font-bold">{places}</div>
-                      <div className="text-[10px] uppercase tracking-wide">
-                        {places <= 4 && places > 0
-                          ? `${places} place${places > 1 ? "s" : ""} restante${places > 1 ? "s" : ""}`
-                          : `${places} place${places > 1 ? "s" : ""}`}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4 p-5">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <Info icon={<CalendarDays className="h-4 w-4" />} text={dateLabel(veh.date_depart)} />
-                    <Info icon={<Clock3 className="h-4 w-4" />} text={veh.heure_depart ? "Départ " + veh.heure_depart : "Heure à confirmer"} />
-                  </div>
-
-                  {veh.ville_depart && (
-                    <div className="flex items-start gap-2 rounded-xl bg-[#FFF7E9]/60 p-3 text-sm text-[#5B4549]">
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#6D1925]" />
-                      <span className="min-w-0 flex-1">
-                        <strong className="font-serif text-xl text-[#6D1925]">{veh.type_trajet === "navette" ? `Gare de ${veh.ville_depart}` : veh.ville_depart}</strong>
-                        {veh.destination && <><br /><span className="text-xs">→ {veh.destination === VENUE ? `Salle de réception : ${VENUE}` : veh.destination}</span></>}
-                      </span>
-                    </div>
-                  )}
-
-                  {veh.date_retour && (
-                    <div className="rounded-xl bg-[#6D1925]/[0.035] px-3 py-2.5 text-sm text-[#5B4549]">
-                      Retour : <strong>{dateLabel(veh.date_retour)}</strong>{veh.heure_retour ? " à " + veh.heure_retour : ""}
-                      {(veh.retour_lieu_depart || veh.retour_ville_arrivee) && <p className="mt-1">{veh.retour_lieu_depart || VENUE} → {veh.retour_ville_arrivee || "Île-de-France"}</p>}
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-2">
-                    <Sticker>{genderEmoji(veh.genre_conducteur)} {veh.genre_conducteur === "femme" ? "Conductrice" : veh.genre_conducteur === "homme_et_femme" ? "Propriétaires" : "Conducteur"}</Sticker>
-                    <Sticker>{veh.animaux_acceptes ? "🐶 Animaux OK" : "🚫🐶 Sans animaux"}</Sticker>
-                    <Sticker>{veh.gratuit ? "🎁 Gratuit" : "💶 " + money(Number(veh.participation || 0)) + " € / pers."}</Sticker>
-                  </div>
-
-                  {veh.telephone && (
-                    <div className="rounded-2xl border border-[#6D1925]/10 bg-[#FFF7E9]/65 p-4">
-                      <p className="text-sm font-bold text-[#6D1925]">Une question avant de réserver ?</p>
-                      <p className="mt-1 text-xs leading-5 text-[#5B4549]">
-                        Contactez directement {veh.conducteur}. Vous n’avez pas besoin de réserver pour poser une question.
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-[#4B242B]">{veh.telephone}</p>
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                        <a
-                          href={transportQuestionLink(veh) || undefined}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 text-sm font-bold text-[#10351d]"
-                        >
-                          <MessageCircle className="h-5 w-5" />
-                          Poser une question sur WhatsApp
-                        </a>
-                        <a
-                          href={`tel:${veh.telephone.replace(/\s/g, "")}`}
-                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 text-sm font-semibold text-[#6D1925]"
-                        >
-                          <Phone className="h-4 w-4" />
-                          Appeler le conducteur
-                        </a>
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    disabled={places < 1 || !veh.reservation_active}
-                    onClick={() => setBookingVehicle(veh)}
-                    className="min-h-11 w-full rounded-xl bg-[#6D1925] px-4 text-sm font-semibold text-[#FFF7E9] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {places < 1
-                      ? "Complet"
-                      : !veh.reservation_active
-                        ? "Coordonnées indisponibles"
-                        : "Réserver ce transport"}
-                  </button>
-
-                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3">
-                    <summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary>
-                    <div className="mt-3">
-                      <PeopleList people={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id)?.people ?? [{ name: veh.conducteur.split(" ")[0], origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]} />
-                      {externalLinkFromComments(veh.commentaires) && (
-                        <a
-                          href={externalLinkFromComments(veh.commentaires) || undefined}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-4 text-sm font-semibold text-[#6D1925]"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          Ouvrir le lien de l’offre
-                        </a>
-                      )}
-                      <p className="mt-3 text-xs text-[#6D1925]/65">Le téléphone est disponible pour poser une question avant réservation. L’email et l’adresse précise restent communiqués après confirmation de la place.</p>
-                    </div>
-                  </details>
-                  {commentsWithoutLink(veh.commentaires) && <p className="rounded-xl bg-[#6D1925]/[0.035] p-3 text-xs leading-5 text-[#5B4549]">{commentsWithoutLink(veh.commentaires)}</p>}
-                </div>
-              </article>
-            )
-          })}
+        <div id="transport-offers" className="grid scroll-mt-20 gap-3 lg:grid-cols-2">
+          {filtered.map((veh) => (
+            <TransportOfferCard
+              key={veh.id}
+              veh={veh}
+              people={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id)?.people ?? [{ name: veh.conducteur.split(" ")[0], origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]}
+              onBook={() => setBookingVehicle(veh)}
+            />
+          ))}
         </div>
       )}
 
@@ -329,6 +209,96 @@ export function TransportMarketplace() {
         />
       )}
     </div>
+  )
+}
+
+function TransportOfferCard({
+  veh,
+  people,
+  onBook,
+}: {
+  veh: Vehicle
+  people: { name: string; origin: string | null; interests: string[]; luggage?: string | null }[]
+  onBook: () => void
+}) {
+  const places = veh.places_disponibles ?? veh.places
+  const available = places > 0
+  const destination = veh.type_trajet === "navette"
+    ? "Navette locale"
+    : normalizeCity(veh.destination ?? "").includes("eglise")
+      ? "Église"
+      : "Salle de réception"
+
+  return (
+    <article className="overflow-hidden rounded-2xl border border-[#6D1925]/10 bg-white shadow-[0_6px_22px_rgba(109,25,37,0.05)]">
+      <div className="flex items-start justify-between gap-3 bg-[#FFF7E9]/55 p-4">
+        <div className="min-w-0">
+          <h2 className="font-serif text-xl font-semibold text-[#6D1925]">{genderEmoji(veh.genre_conducteur)} {veh.conducteur}</h2>
+          <p className="mt-1 text-xs text-[#6D1925]/65">{veh.type_trajet === "navette" ? "🚉 Navette locale depuis une gare" : "🚗 Covoiturage"}</p>
+        </div>
+        <div className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${available ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+          <span className={`mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full ${available ? "bg-emerald-500" : "bg-red-500"}`} />
+          {available ? (places === 1 ? "Disponible · 1 place restante" : `Disponible · ${places} places`) : "Complet"}
+        </div>
+      </div>
+
+      <div className="p-4">
+        <div className="grid grid-cols-2 gap-3 rounded-xl bg-[#FFF7E9]/45 p-3 text-xs text-[#5B4549]">
+          <div>
+            <p className="font-bold uppercase tracking-wide text-[#6D1925]/55">Aller</p>
+            <p className="mt-1 font-semibold text-[#4B242B]">{dateLabel(veh.date_depart)}{veh.heure_depart ? ` · ${veh.heure_depart}` : ""}</p>
+            <p className="mt-1">{veh.type_trajet === "navette" ? `Gare de ${veh.ville_depart || "à préciser"}` : veh.ville_depart || "Départ à préciser"} → {destination}</p>
+          </div>
+          <div className="border-l border-[#6D1925]/10 pl-3">
+            <p className="font-bold uppercase tracking-wide text-[#6D1925]/55">Retour</p>
+            {veh.date_retour ? <>
+              <p className="mt-1 font-semibold text-[#4B242B]">{dateLabel(veh.date_retour)}{veh.heure_retour ? ` · ${veh.heure_retour}` : ""}</p>
+              <p className="mt-1">{veh.retour_ville_arrivee || "Destination à préciser"}</p>
+            </> : <p className="mt-1 text-[#6D1925]/55">Pas de retour proposé</p>}
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-[#6D1925]/50">Montant / personne</p>
+            <p className="font-serif text-2xl font-bold text-[#6D1925]">{money(Number(veh.participation || 0))} €</p>
+          </div>
+          <button
+            type="button"
+            disabled={!available || !veh.reservation_active}
+            onClick={onBook}
+            className="min-h-10 rounded-xl bg-[#6D1925] px-4 text-xs font-semibold text-[#FFF7E9] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {!available ? "Complet" : "Réserver"}
+          </button>
+        </div>
+
+        <details className="mt-3 rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/35 p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-[#6D1925]">Voir les détails</summary>
+          <div className="mt-3 space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Sticker>{genderEmoji(veh.genre_conducteur)} {veh.genre_conducteur === "femme" ? "Conductrice" : veh.genre_conducteur === "homme_et_femme" ? "Homme et femme" : "Conducteur"}</Sticker>
+              <Sticker>{veh.animaux_acceptes ? "🐶 Animaux OK" : "🚫🐶 Sans animaux"}</Sticker>
+              <Sticker>💶 {money(Number(veh.participation || 0))} € / pers.</Sticker>
+            </div>
+
+            <PeopleList people={people} />
+
+            {veh.telephone && <div className="rounded-xl border border-[#6D1925]/10 bg-white/70 p-3">
+              <p className="text-sm font-bold text-[#6D1925]">Une question avant de réserver ?</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <a href={transportQuestionLink(veh) || undefined} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 text-xs font-bold text-[#10351d]"><MessageCircle className="h-4 w-4" /> WhatsApp</a>
+                <a href={`tel:${veh.telephone.replace(/\s/g, "")}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 text-xs font-semibold text-[#6D1925]"><Phone className="h-4 w-4" /> Appeler</a>
+                <a href={`sms:${veh.telephone.replace(/\s/g, "")}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 text-xs font-semibold text-[#6D1925]"><MessageCircle className="h-4 w-4" /> Message</a>
+              </div>
+            </div>}
+
+            {externalLinkFromComments(veh.commentaires) && <a href={externalLinkFromComments(veh.commentaires) || undefined} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 text-xs font-semibold text-[#6D1925]"><ExternalLink className="h-4 w-4" /> Ouvrir le lien de l’offre</a>}
+            {commentsWithoutLink(veh.commentaires) && <p className="rounded-xl bg-white/65 p-3 text-xs leading-5 text-[#5B4549]">{commentsWithoutLink(veh.commentaires)}</p>}
+          </div>
+        </details>
+      </div>
+    </article>
   )
 }
 
@@ -370,7 +340,7 @@ function TransportForm({
     retour_lieu_depart: VENUE,
     retour_ville_arrivee: "",
     places_disponibles: 1,
-    gratuit: true,
+    gratuit: false,
     participation: "0",
     animaux_acceptes: false,
     commentaires: "",
@@ -404,15 +374,15 @@ function TransportForm({
       return
     }
     if (occupants.some((person) => !person.firstName.trim() || !person.lastName.trim())) { toast.error("Indiquez le prénom et le nom de chaque adulte ou enfant avec vous."); return }
-    const parsedParticipation = form.gratuit ? 0 : parseMoney(form.participation)
-    if (!form.gratuit && Number.isNaN(parsedParticipation)) {
+    const parsedParticipation = parseMoney(form.participation)
+    if (Number.isNaN(parsedParticipation)) {
       toast.error("Indiquez un montant valide, par exemple 0, 15 ou 15,50.")
       return
     }
     setSaving(true)
     try {
       const groupToken = crypto.randomUUID()
-      const offerId = await saveVehicle({ ...form, participation: parsedParticipation, commentaires: [form.commentaires.trim(), form.external_url.trim() ? "Lien : " + form.external_url.trim() : ""].filter(Boolean).join("\n"), compagnons_prenoms: occupants.map(personLabel).join(", "), group_manage_token: groupToken, retour_lieu_depart: form.date_retour ? form.retour_lieu_depart : "", retour_ville_arrivee: form.date_retour ? form.retour_ville_arrivee : "", places: form.places_disponibles, source, actif: true })
+      const offerId = await saveVehicle({ ...form, gratuit: parsedParticipation === 0, participation: parsedParticipation, commentaires: [form.commentaires.trim(), form.external_url.trim() ? "Lien : " + form.external_url.trim() : ""].filter(Boolean).join("\n"), compagnons_prenoms: occupants.map(personLabel).join(", "), group_manage_token: groupToken, retour_lieu_depart: form.date_retour ? form.retour_lieu_depart : "", retour_ville_arrivee: form.date_retour ? form.retour_ville_arrivee : "", places: form.places_disponibles, source, actif: true })
       toast.success("Votre transport a bien été ajouté.")
       onPublished(`/groupe?type=vehicle&offre=${offerId}&gestion=${groupToken}`)
     } catch (error) {
@@ -453,7 +423,7 @@ function TransportForm({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div><span className={label}>{fromStation ? "Gare de prise en charge *" : "Ville de départ (Île-de-France) *"}</span>{fromStation ? <select className={field} value={form.ville_depart} onChange={(e) => { set("ville_depart", e.target.value); set("lieu_depart", e.target.value ? `Gare de ${e.target.value}` : "") }}><option value="">Choisir une gare</option>{STATIONS.map((station) => <option key={station} value={station}>Gare de {station}</option>)}</select> : <CityPicker className={field} label="Ville de départ" area="idf" placeholder="Tapez une ville…" value={form.ville_depart} onChange={(value) => set("ville_depart", value)} />}</div>
-          <Field title={fromStation ? "Point de rendez-vous exact à la gare *" : "Lieu de départ précis *"}><AddressPicker className={field} label="Lieu de prise en charge précis" city={form.ville_depart} value={form.lieu_depart} onChange={(value) => set("lieu_depart", value)} /></Field>
+          <Field title={fromStation ? "Adresse / point de rendez-vous exact à la gare *" : "Adresse précise de départ *"}><AddressPicker className={field} label="Lieu de prise en charge précis" city={form.ville_depart} value={form.lieu_depart} onChange={(value) => set("lieu_depart", value)} /></Field>
         </div>
 
         <Field title="Lieu de dépose à l’aller *"><select className={field} value={form.destination} onChange={(e) => set("destination", e.target.value)}><option value={CHURCH}>{CHURCH}</option><option value={VENUE}>{VENUE} (salle de réception)</option></select></Field>
@@ -465,7 +435,7 @@ function TransportForm({
             </select>
           </Field>
           <Field title="Heure de départ *"><select className={field} value={form.heure_depart} onChange={(e) => set("heure_depart", e.target.value)}><option value="">Choisir une heure</option>{Array.from({ length: 96 }, (_, index) => { const value = `${String(Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}`; return <option key={value} value={value}>{value}</option> })}</select></Field>
-          <Field title="Places disponibles (adultes et enfants) *"><select className={field} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Number(e.target.value))}>{adultChoices.map((count) => <option key={count} value={count}>{count} place{count > 1 ? "s" : ""}</option>)}</select><span className="mt-1 block text-xs text-[#6D1925]/65">Chaque enfant occupe une place dans la voiture.</span></Field>
+          <Field title="Places disponibles (adultes et enfants) *"><select className={field} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Number(e.target.value))}>{adultChoices.map((count) => <option key={count} value={count}>{count} place{count > 1 ? "s" : ""}</option>)}</select><span className="mt-1 block text-xs text-[#6D1925]/65">Chaque enfant occupe une place. L’adresse exacte ne sera communiquée qu’après réservation.</span></Field>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -481,12 +451,7 @@ function TransportForm({
         {form.date_retour && <div className="grid gap-4 sm:grid-cols-2"><div><Field title="Départ du retour *"><select className={field} value={returnFromAccommodation ? "hebergement" : "salle"} onChange={(e) => { const fromAccommodation = e.target.value === "hebergement"; setReturnFromAccommodation(fromAccommodation); set("retour_lieu_depart", fromAccommodation ? "" : VENUE) }}><option value="salle">{VENUE} (salle)</option><option value="hebergement">Ville de l’hébergement</option></select></Field>{returnFromAccommodation && <div className="mt-3"><span className={label}>Ville de l’hébergement (Aube) *</span><CityPicker className={field} label="Ville de l’hébergement au retour" area="aube" placeholder="Tapez une ville…" value={form.retour_lieu_depart} onChange={(value) => set("retour_lieu_depart", value)} /></div>}</div><div><span className={label}>Ville de dépose au retour (Île-de-France) *</span><CityPicker className={field} label="Ville de dépose au retour" area="idf" placeholder="Tapez une ville…" value={form.retour_ville_arrivee} onChange={(value) => set("retour_ville_arrivee", value)} /></div></div>}
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="flex cursor-pointer items-center justify-between rounded-xl border border-[#6D1925]/10 bg-white/60 px-4 py-3 text-sm"><span>Transport gratuit 🎁</span><input type="checkbox" checked={form.gratuit} onChange={(e) => set("gratuit", e.target.checked)} /></label>
-          <label className="flex cursor-pointer items-center justify-between rounded-xl border border-[#6D1925]/10 bg-white/60 px-4 py-3 text-sm"><span>Animaux acceptés 🐶</span><input type="checkbox" checked={form.animaux_acceptes} onChange={(e) => set("animaux_acceptes", e.target.checked)} /></label>
-        </div>
-
-        {!form.gratuit && (
-          <Field title="Participation demandée par personne (€)">
+          <Field title="Montant par personne (€) · 0 € accepté">
             <input
               className={field}
               type="text"
@@ -496,7 +461,8 @@ function TransportForm({
               onChange={(e) => set("participation", e.target.value.replace(/[^0-9,.]/g, ""))}
             />
           </Field>
-        )}
+          <label className="flex cursor-pointer items-center justify-between rounded-xl border border-[#6D1925]/10 bg-white/60 px-4 py-3 text-sm"><span>Animaux acceptés 🐶</span><input type="checkbox" checked={form.animaux_acceptes} onChange={(e) => set("animaux_acceptes", e.target.checked)} /></label>
+        </div>
 
         <Field title="Lien utile (facultatif)">
           <input
@@ -553,9 +519,7 @@ function TransportReservationDialog({
     luggage: "petit" as "petit" | "moyen" | "gros",
   })
 
-  const total = veh.gratuit
-    ? 0
-    : form.nbPersonnes * Number(veh.participation || 0)
+  const total = form.nbPersonnes * Number(veh.participation || 0)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -629,14 +593,24 @@ function TransportReservationDialog({
 
         {confirmation ? (
           <div className="mt-5 grid gap-4 rounded-2xl border border-[#6D1925]/10 bg-white/75 p-5">
-            <h3 className="font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée</h3>
-            <p className="rounded-xl bg-[#FFF7E9] p-4 text-sm font-semibold leading-6 text-[#6D1925]">
-              Votre place est réservée. Contactez maintenant le conducteur ou propriétaire de cette offre pour confirmer les détails du trajet et vous assurer que tout se passe correctement.
+            <h3 className="animate-pulse font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée ✓</h3>
+            <p className="animate-pulse rounded-xl bg-[#FFF7E9] p-4 text-sm font-semibold leading-6 text-[#6D1925]">
+              Vous pouvez maintenant contacter le conducteur pour finaliser le trajet.
             </p>
             {!confirmation.emailSent && (
               <p className="text-xs text-[#6D1925]/65">La réservation est bien enregistrée ; seule la notification automatique par email n’a pas abouti.</p>
             )}
-            {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]"><p className="font-semibold">Contact : {confirmation.providerContact.name}</p>{confirmation.providerContact.phone && <a className="block underline" href={`tel:${confirmation.providerContact.phone}`}>{confirmation.providerContact.phone}</a>}{confirmation.providerContact.email && <a className="block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}{confirmation.providerContact.address && <div className="mt-3"><p className="font-semibold">Vérifiez le lieu exact de votre prise en charge :</p><a className="block underline" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(confirmation.providerContact.address)}`}>📍 {confirmation.providerContact.address} · ouvrir dans Google Maps</a></div>}{confirmation.providerContact.members?.length > 0 && <div className="mt-3 border-t border-[#6D1925]/10 pt-3"><p className="font-semibold">Autres participants confirmés</p>{confirmation.providerContact.members.map((member, i) => <p key={`${member.email}-${i}`}>{member.name} · <a className="underline" href={`mailto:${member.email}`}>{member.email}</a></p>)}</div>}</div>}
+            {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]">
+              <p className="font-semibold">Contact : {confirmation.providerContact.name}</p>
+              {confirmation.providerContact.phone && <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <a target="_blank" rel="noopener noreferrer" href={`https://wa.me/${whatsappNumber(confirmation.providerContact.phone)}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 font-semibold text-[#10351d]"><MessageCircle className="h-4 w-4" /> WhatsApp</a>
+                <a href={`tel:${confirmation.providerContact.phone}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 font-semibold text-[#6D1925]"><Phone className="h-4 w-4" /> Appeler</a>
+                <a href={`sms:${confirmation.providerContact.phone}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 font-semibold text-[#6D1925]"><MessageCircle className="h-4 w-4" /> Message</a>
+              </div>}
+              {confirmation.providerContact.email && <a className="mt-3 block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}
+              {confirmation.providerContact.address && <div className="mt-3"><p className="font-semibold">Lieu exact de départ :</p><a className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-3 font-semibold text-[#6D1925]" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(confirmation.providerContact.address)}`}>📍 Ouvrir dans Google Maps</a></div>}
+              {confirmation.providerContact.members?.length > 0 && <div className="mt-3 border-t border-[#6D1925]/10 pt-3"><p className="font-semibold">Autres participants confirmés</p>{confirmation.providerContact.members.map((member, i) => <p key={`${member.email}-${i}`}>{member.name} · <a className="underline" href={`mailto:${member.email}`}>{member.email}</a></p>)}</div>}
+            </div>}
             <a href={confirmation.cancellationUrl} className="text-sm font-semibold underline text-[#6D1925]">Conserver mon lien pour annuler cette place si besoin</a>
             {!confirmation.whatsappUrl && <a href={confirmation.groupUrl} className="text-sm font-semibold underline text-[#6D1925]">Voir le groupe WhatsApp ou le créer à partir de trois personnes</a>}
             {confirmation.whatsappUrl && <a href={confirmation.whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-[#10351d]"><MessageCircle className="h-5 w-5" /> Rejoindre le groupe WhatsApp</a>}
@@ -680,9 +654,9 @@ function TransportReservationDialog({
           <div className="rounded-2xl border border-[#6D1925]/10 bg-white/70 p-4">
             <p className="text-xs uppercase tracking-wide text-[#6D1925]/55">Participation totale</p>
             <p className="mt-1 font-serif text-3xl font-semibold text-[#6D1925]">
-              {total === 0 ? "Gratuit" : money(total) + " €"}
+              {money(total) + " €"}
             </p>
-            {!veh.gratuit && (
+            {(
               <p className="mt-1 text-xs text-[#5B4549]">
                 {form.nbPersonnes} place{form.nbPersonnes > 1 ? "s" : ""} × {money(Number(veh.participation || 0))} €
               </p>
