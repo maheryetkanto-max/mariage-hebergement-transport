@@ -417,7 +417,7 @@ function TransportForm({
               <option value="homme_et_femme">👫 Homme et femme</option>
             </select>
           </Field>
-          <Field title="Téléphone français *"><FrenchPhone className={field} value={form.telephone} onChange={(value) => set("telephone", value)} /></Field>
+          <Field title="Téléphone français * · visible pour les questions"><FrenchPhone className={field} value={form.telephone} onChange={(value) => set("telephone", value)} /></Field>
           <Field title="Email *"><input className={field} type="email" value={form.email_conducteur} onChange={(e) => set("email_conducteur", e.target.value)} /></Field>
         </div>
 
