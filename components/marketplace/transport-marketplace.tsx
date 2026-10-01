@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, Car, Clock3, MapPin, MessageCircle, Phone, Plus, Search, X } from "lucide-react"
+import { CalendarDays, Car, Clock3, ExternalLink, MapPin, MessageCircle, Phone, Plus, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import { reserveVehicle, saveVehicle, useVehicles, useOfferPeople } from "@/lib/data"
 import { OUTBOUND_DATES, RETURN_DATES, type Gender, type TransportType, type Vehicle } from "@/lib/types"
@@ -40,6 +40,14 @@ function money(value: number) {
     minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(value)
+}
+
+function externalLinkFromComments(value: string | null) {
+  return value?.match(/https?:\/\/[^\s]+/)?.[0] ?? null
+}
+
+function commentsWithoutLink(value: string | null) {
+  return value?.replace(/(?:Lien\s*:\s*)?https?:\/\/[^\s]+/g, "").trim() ?? ""
 }
 
 function whatsappNumber(phone: string) {
@@ -285,8 +293,25 @@ export function TransportMarketplace() {
                         : "Réserver ce transport"}
                   </button>
 
-                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3"><summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary><div className="mt-3"><PeopleList people={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id)?.people ?? [{ name: veh.conducteur.split(" ")[0], origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]} /><p className="mt-3 text-xs text-[#6D1925]/65">Le téléphone est disponible pour poser une question avant réservation. L’email et l’adresse précise restent communiqués après confirmation de la place.</p></div></details>
-                  {veh.commentaires && <p className="rounded-xl bg-[#6D1925]/[0.035] p-3 text-xs leading-5 text-[#5B4549]">{veh.commentaires}</p>}
+                  <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3">
+                    <summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary>
+                    <div className="mt-3">
+                      <PeopleList people={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id)?.people ?? [{ name: veh.conducteur.split(" ")[0], origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]} />
+                      {externalLinkFromComments(veh.commentaires) && (
+                        <a
+                          href={externalLinkFromComments(veh.commentaires) || undefined}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#6D1925]/20 bg-white px-4 text-sm font-semibold text-[#6D1925]"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Ouvrir le lien de l’offre
+                        </a>
+                      )}
+                      <p className="mt-3 text-xs text-[#6D1925]/65">Le téléphone est disponible pour poser une question avant réservation. L’email et l’adresse précise restent communiqués après confirmation de la place.</p>
+                    </div>
+                  </details>
+                  {commentsWithoutLink(veh.commentaires) && <p className="rounded-xl bg-[#6D1925]/[0.035] p-3 text-xs leading-5 text-[#5B4549]">{commentsWithoutLink(veh.commentaires)}</p>}
                 </div>
               </article>
             )
@@ -349,6 +374,7 @@ function TransportForm({
     participation: "0",
     animaux_acceptes: false,
     commentaires: "",
+    external_url: "",
     compagnons_prenoms: "",
     centres_interet: [] as string[],
   })
@@ -386,7 +412,7 @@ function TransportForm({
     setSaving(true)
     try {
       const groupToken = crypto.randomUUID()
-      const offerId = await saveVehicle({ ...form, participation: parsedParticipation, compagnons_prenoms: occupants.map(personLabel).join(", "), group_manage_token: groupToken, retour_lieu_depart: form.date_retour ? form.retour_lieu_depart : "", retour_ville_arrivee: form.date_retour ? form.retour_ville_arrivee : "", places: form.places_disponibles, source, actif: true })
+      const offerId = await saveVehicle({ ...form, participation: parsedParticipation, commentaires: [form.commentaires.trim(), form.external_url.trim() ? "Lien : " + form.external_url.trim() : ""].filter(Boolean).join("\n"), compagnons_prenoms: occupants.map(personLabel).join(", "), group_manage_token: groupToken, retour_lieu_depart: form.date_retour ? form.retour_lieu_depart : "", retour_ville_arrivee: form.date_retour ? form.retour_ville_arrivee : "", places: form.places_disponibles, source, actif: true })
       toast.success("Votre transport a bien été ajouté.")
       onPublished(`/groupe?type=vehicle&offre=${offerId}&gestion=${groupToken}`)
     } catch (error) {
@@ -471,6 +497,18 @@ function TransportForm({
             />
           </Field>
         )}
+
+        <Field title="Lien utile (facultatif)">
+          <input
+            className={field}
+            type="url"
+            inputMode="url"
+            placeholder="https://..."
+            value={form.external_url}
+            onChange={(e) => set("external_url", e.target.value)}
+          />
+          <span className="mt-1 block text-xs text-[#6D1925]/65">Par exemple une page avec davantage d’informations sur le trajet, le véhicule ou le point de rendez-vous.</span>
+        </Field>
 
         <Field title="Informations complémentaires"><textarea className={field} rows={3} placeholder="Ex. petit bagage uniquement, passage par telle gare…" value={form.commentaires} onChange={(e) => set("commentaires", e.target.value)} /></Field>
 
