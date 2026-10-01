@@ -95,6 +95,10 @@ export function TransportMarketplace() {
     const returnQuery = normalizeCity(arrivalCity)
     return vehicles
       .filter((v) => v.actif !== false)
+      .filter((v) => {
+        const remaining = v.places_disponibles ?? v.places
+        return remaining === 0 || remaining >= people
+      })
       .filter((v) => !type || (type === "navette" ? v.type_trajet === "navette" : type === "church" ? normalizeCity(v.destination ?? "").includes("eglise") : normalizeCity(v.destination ?? "").includes("salle") || normalizeCity(v.destination ?? "").includes("clos belair")))
       .filter((v) => !date || v.date_depart === date)
       .filter((v) => !returnDate || v.date_retour === returnDate)
@@ -361,8 +365,8 @@ function TransportForm({
       toast.error("Choisissez une ville d’Île-de-France ou une gare proposée, ainsi que la ville de retour.")
       return
     }
-    if (form.date_retour && returnFromAccommodation && !isListedCity(form.retour_lieu_depart, "aube")) {
-      toast.error("Choisissez la ville de l’hébergement dans l’Aube pour le retour.")
+    if (form.date_retour && returnFromAccommodation && !isListedCity(form.retour_lieu_depart, "troyes-2h")) {
+      toast.error("Choisissez la ville de l’hébergement autour de Troyes pour le retour.")
       return
     }
     if (form.heure_depart && !/^(?:[01]\d|2[0-3]):(?:00|15|30|45)$/.test(form.heure_depart)) {
@@ -448,7 +452,7 @@ function TransportForm({
           <Field title="Heure de retour"><select className={field} value={form.heure_retour} onChange={(e) => set("heure_retour", e.target.value)} disabled={!form.date_retour}><option value="">À préciser</option>{Array.from({ length: 96 }, (_, index) => { const value = `${String(Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}`; return <option key={value} value={value}>{value}</option> })}</select></Field>
         </div>
 
-        {form.date_retour && <div className="grid gap-4 sm:grid-cols-2"><div><Field title="Départ du retour *"><select className={field} value={returnFromAccommodation ? "hebergement" : "salle"} onChange={(e) => { const fromAccommodation = e.target.value === "hebergement"; setReturnFromAccommodation(fromAccommodation); set("retour_lieu_depart", fromAccommodation ? "" : VENUE) }}><option value="salle">{VENUE} (salle)</option><option value="hebergement">Ville de l’hébergement</option></select></Field>{returnFromAccommodation && <div className="mt-3"><span className={label}>Ville de l’hébergement (Aube) *</span><CityPicker className={field} label="Ville de l’hébergement au retour" area="aube" placeholder="Tapez une ville…" value={form.retour_lieu_depart} onChange={(value) => set("retour_lieu_depart", value)} /></div>}</div><div><span className={label}>Ville de dépose au retour (Île-de-France) *</span><CityPicker className={field} label="Ville de dépose au retour" area="idf" placeholder="Tapez une ville…" value={form.retour_ville_arrivee} onChange={(value) => set("retour_ville_arrivee", value)} /></div></div>}
+        {form.date_retour && <div className="grid gap-4 sm:grid-cols-2"><div><Field title="Départ du retour *"><select className={field} value={returnFromAccommodation ? "hebergement" : "salle"} onChange={(e) => { const fromAccommodation = e.target.value === "hebergement"; setReturnFromAccommodation(fromAccommodation); set("retour_lieu_depart", fromAccommodation ? "" : VENUE) }}><option value="salle">{VENUE} (salle)</option><option value="hebergement">Ville de l’hébergement</option></select></Field>{returnFromAccommodation && <div className="mt-3"><span className={label}>Ville de l’hébergement autour de Troyes *</span><CityPicker className={field} label="Ville de l’hébergement au retour" area="troyes-2h" placeholder="Tapez une ville…" value={form.retour_lieu_depart} onChange={(value) => set("retour_lieu_depart", value)} /></div>}</div><div><span className={label}>Ville de dépose au retour (Île-de-France) *</span><CityPicker className={field} label="Ville de dépose au retour" area="idf" placeholder="Tapez une ville…" value={form.retour_ville_arrivee} onChange={(value) => set("retour_ville_arrivee", value)} /></div></div>}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Field title="Montant par personne (€) · 0 € accepté">
