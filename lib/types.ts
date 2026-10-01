@@ -41,6 +41,7 @@ export interface Accommodation {
   compagnons_prenoms?: string | null
   centres_interet?: string[]
   whatsapp_group_url?: string | null
+  external_url?: string | null
   reservation_active: boolean
   places_disponibles: number
   minutes_salle: number | null
@@ -64,6 +65,7 @@ export interface Vehicle {
   compagnons_prenoms?: string | null
   centres_interet?: string[]
   whatsapp_group_url?: string | null
+  external_url?: string | null
   reservation_active: boolean
   lieu_depart: string | null
   heure_depart: string | null
