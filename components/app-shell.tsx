@@ -25,7 +25,7 @@ function SongButton() {
           <iframe
             id="mk-song-player"
             title="Notre chanson"
-            src="https://www.youtube.com/embed/w0NEOVbU3hQ?autoplay=1&playsinline=1&controls=0&rel=0&loop=1&playlist=w0NEOVbU3hQ"
+            src="https://www.youtube-nocookie.com/embed/w0NEOVbU3hQ?autoplay=1&playsinline=1&controls=0&rel=0&loop=1&playlist=w0NEOVbU3hQ"
             allow="autoplay; encrypted-media"
             width="220"
             height="124"
@@ -40,7 +40,8 @@ function SongButton() {
         aria-label={playing ? "Mettre notre chanson en pause" : "Lire notre chanson"}
       >
         {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
-        {playing ? "Pause" : "Play"}
+        <span>Notre chanson</span>
+        <span className="text-[10px] font-medium opacity-60">{playing ? "Pause" : "Play"}</span>
       </button>
     </div>
   )
