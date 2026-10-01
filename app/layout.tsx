@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/sonner"
 import { AppShell } from "@/components/app-shell"
 import "./globals.css"
 
+// Final UX release 2026-10-02
+
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
