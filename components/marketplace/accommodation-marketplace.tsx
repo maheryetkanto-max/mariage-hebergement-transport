@@ -482,7 +482,7 @@ function AccommodationForm({
               <option value="homme">👨 Homme</option>
             </select>
           </Field>
-          <Field title="Téléphone *">
+          <Field title="Téléphone * · visible pour les questions">
             <FrenchPhone className={field} value={form.telephone_proposant} onChange={(value) => set("telephone_proposant", value)} />
           </Field>
           <Field title="Email *">
