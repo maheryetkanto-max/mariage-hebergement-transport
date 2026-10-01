@@ -404,7 +404,9 @@ function AccommodationAdminRow({
     minutes_salle: acc.minutes_salle ?? 0,
     date_entree: acc.date_entree ?? "2026-12-30",
     date_sortie: acc.date_sortie ?? "2027-01-01",
-    prix_personne_nuit: Number(acc.prix_personne_nuit || 0),
+    prix_personne_nuit: String(acc.prix_personne_nuit ?? 0).replace(".", ","),
+    prix_mode: acc.prix_mode ?? "per_night",
+    nuits_minimum: acc.nuits_minimum ?? 1,
     enfants_acceptes: acc.enfants_acceptes,
     animaux_acceptes: acc.animaux_acceptes,
     commentaires: acc.commentaires ?? "",
@@ -488,8 +490,17 @@ function AccommodationAdminRow({
           <Field title="Minutes de la salle">
             <input className={field} type="number" min={0} value={form.minutes_salle} onChange={(e) => set("minutes_salle", Math.max(0, Number(e.target.value) || 0))} />
           </Field>
-          <Field title="Prix / pers. / nuit">
-            <input className={field} type="number" min={0} step="0.01" value={form.prix_personne_nuit} onChange={(e) => set("prix_personne_nuit", Math.max(0, Number(e.target.value) || 0))} />
+          <Field title="Montant par personne (€)">
+            <input className={field} type="text" inputMode="decimal" value={form.prix_personne_nuit} onChange={(e) => set("prix_personne_nuit", e.target.value.replace(/[^0-9,.]/g, ""))} />
+          </Field>
+          <Field title="Le montant correspond à">
+            <select className={field} value={form.prix_mode} onChange={(e) => set("prix_mode", e.target.value as "per_night" | "fixed_stay")}>
+              <option value="per_night">Une nuit</option>
+              <option value="fixed_stay">Tout le séjour minimum</option>
+            </select>
+          </Field>
+          <Field title="Nuits minimum">
+            <input className={field} type="number" min={1} value={form.nuits_minimum} onChange={(e) => set("nuits_minimum", Math.max(1, Number(e.target.value) || 1))} />
           </Field>
           <Field title="Disponible dès">
             <select className={field} value={form.date_entree} onChange={(e) => set("date_entree", e.target.value)}>
@@ -552,7 +563,7 @@ function VehicleAdminRow({
     retour_ville_arrivee: veh.retour_ville_arrivee ?? "",
     places_disponibles: veh.places_disponibles ?? veh.places,
     gratuit: veh.gratuit,
-    participation: Number(veh.participation || 0),
+    participation: String(veh.participation ?? 0).replace(".", ","),
     animaux_acceptes: veh.animaux_acceptes,
     commentaires: veh.commentaires ?? "",
     actif: veh.actif !== false,
@@ -656,7 +667,7 @@ function VehicleAdminRow({
             <input className={field} type="number" min={0} value={form.places_disponibles} onChange={(e) => set("places_disponibles", Math.max(0, Number(e.target.value) || 0))} />
           </Field>
           <Field title="Participation / pers.">
-            <input disabled={form.gratuit} className={field + " disabled:opacity-40"} type="number" min={0} step="0.01" value={form.participation} onChange={(e) => set("participation", Math.max(0, Number(e.target.value) || 0))} />
+            <input disabled={form.gratuit} className={field + " disabled:opacity-40"} type="text" inputMode="decimal" value={form.participation} onChange={(e) => set("participation", e.target.value.replace(/[^0-9,.]/g, ""))} />
           </Field>
         </div>
 

@@ -30,6 +30,18 @@ function genderEmoji(gender: Gender | null) {
   return gender === "femme" ? "👩" : gender === "homme" ? "👨" : gender === "homme_et_femme" ? "👫" : "🙂"
 }
 
+function parseMoney(value: string | number) {
+  const amount = Number(String(value).trim().replace(",", "."))
+  return Number.isFinite(amount) && amount >= 0 ? amount : NaN
+}
+
+function money(value: number) {
+  return new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
 export function TransportMarketplace() {
   const { data: vehicles = [], isLoading } = useVehicles()
   const { data: offerPeople = [] } = useOfferPeople()
@@ -173,12 +185,19 @@ export function TransportMarketplace() {
                         <span className="rounded-full border border-[#6D1925]/15 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#6D1925]/70">{veh.type_trajet === "navette" ? "🚉 Navette locale" : "🚗 Covoiturage"}</span>
                       </div>
                       <p className="mt-1 text-sm text-[#5B4549]">
-                        {veh.gratuit ? <strong className="text-emerald-700">Gratuit</strong> : <strong>{Number(veh.participation || 0).toFixed(0)} € / personne</strong>}
+                        {veh.gratuit ? <strong className="text-emerald-700">Gratuit</strong> : <strong>{money(Number(veh.participation || 0))} € / personne</strong>}
                       </p>
                     </div>
-                    <div className="shrink-0 rounded-xl bg-[#6D1925] px-3 py-2 text-center text-[#FFF7E9]">
+                    <div className={"shrink-0 rounded-xl px-3 py-2 text-center text-[#FFF7E9] " + (places <= 4 && places > 0 ? "bg-[#8E2D18]" : "bg-[#6D1925]")}>
+                      {places <= 4 && places > 0 && (
+                        <div className="mb-1 text-[9px] font-bold uppercase tracking-wide">Bientôt plus disponible</div>
+                      )}
                       <div className="text-xl font-bold">{places}</div>
-                      <div className="text-[10px] uppercase tracking-wide">place{places > 1 ? "s" : ""}</div>
+                      <div className="text-[10px] uppercase tracking-wide">
+                        {places <= 4 && places > 0
+                          ? `${places} place${places > 1 ? "s" : ""} restante${places > 1 ? "s" : ""}`
+                          : `${places} place${places > 1 ? "s" : ""}`}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -209,7 +228,7 @@ export function TransportMarketplace() {
                   <div className="flex flex-wrap gap-2">
                     <Sticker>{genderEmoji(veh.genre_conducteur)} {veh.genre_conducteur === "femme" ? "Conductrice" : veh.genre_conducteur === "homme_et_femme" ? "Propriétaires" : "Conducteur"}</Sticker>
                     <Sticker>{veh.animaux_acceptes ? "🐶 Animaux OK" : "🚫🐶 Sans animaux"}</Sticker>
-                    <Sticker>{veh.gratuit ? "🎁 Gratuit" : "💶 " + Number(veh.participation || 0).toFixed(0) + " € / pers."}</Sticker>
+                    <Sticker>{veh.gratuit ? "🎁 Gratuit" : "💶 " + money(Number(veh.participation || 0)) + " € / pers."}</Sticker>
                   </div>
 
                   <p className="border-t border-[#6D1925]/8 pt-4 text-xs text-[#6D1925]/65">Les coordonnées du conducteur s’affichent après confirmation de votre place.</p>
@@ -224,7 +243,7 @@ export function TransportMarketplace() {
                       ? "Complet"
                       : !veh.reservation_active
                         ? "Coordonnées indisponibles"
-                        : "Confirmer ma place"}
+                        : "Réserver ce transport"}
                   </button>
 
                   <details className="rounded-xl border border-[#6D1925]/10 bg-[#FFF7E9]/50 p-3"><summary className="cursor-pointer font-semibold text-[#6D1925]">Voir les personnes et les détails</summary><div className="mt-3"><PeopleList people={offerPeople.find((group) => group.type === "vehicle" && group.id === veh.id)?.people ?? [{ name: veh.conducteur.split(" ")[0], origin: veh.ville_depart, interests: veh.centres_interet ?? [] }]} /><p className="mt-3 text-xs text-[#6D1925]/65">Téléphone, email et adresse précise disponibles après confirmation de la place.</p></div></details>
@@ -288,7 +307,7 @@ function TransportForm({
     retour_ville_arrivee: "",
     places_disponibles: 1,
     gratuit: true,
-    participation: 0,
+    participation: "0",
     animaux_acceptes: false,
     commentaires: "",
     compagnons_prenoms: "",
@@ -320,10 +339,15 @@ function TransportForm({
       return
     }
     if (occupants.some((person) => !person.firstName.trim() || !person.lastName.trim())) { toast.error("Indiquez le prénom et le nom de chaque adulte ou enfant avec vous."); return }
+    const parsedParticipation = form.gratuit ? 0 : parseMoney(form.participation)
+    if (!form.gratuit && Number.isNaN(parsedParticipation)) {
+      toast.error("Indiquez un montant valide, par exemple 0, 15 ou 15,50.")
+      return
+    }
     setSaving(true)
     try {
       const groupToken = crypto.randomUUID()
-      const offerId = await saveVehicle({ ...form, compagnons_prenoms: occupants.map(personLabel).join(", "), group_manage_token: groupToken, retour_lieu_depart: form.date_retour ? form.retour_lieu_depart : "", retour_ville_arrivee: form.date_retour ? form.retour_ville_arrivee : "", places: form.places_disponibles, source, actif: true })
+      const offerId = await saveVehicle({ ...form, participation: parsedParticipation, compagnons_prenoms: occupants.map(personLabel).join(", "), group_manage_token: groupToken, retour_lieu_depart: form.date_retour ? form.retour_lieu_depart : "", retour_ville_arrivee: form.date_retour ? form.retour_ville_arrivee : "", places: form.places_disponibles, source, actif: true })
       toast.success("Votre transport a bien été ajouté.")
       onPublished(`/groupe?type=vehicle&offre=${offerId}&gestion=${groupToken}`)
     } catch (error) {
@@ -396,7 +420,18 @@ function TransportForm({
           <label className="flex cursor-pointer items-center justify-between rounded-xl border border-[#6D1925]/10 bg-white/60 px-4 py-3 text-sm"><span>Animaux acceptés 🐶</span><input type="checkbox" checked={form.animaux_acceptes} onChange={(e) => set("animaux_acceptes", e.target.checked)} /></label>
         </div>
 
-        {!form.gratuit && <Field title="Participation demandée par personne (€)"><input className={field} type="number" min={0} step="0.01" value={form.participation} onChange={(e) => set("participation", Math.max(0, Number(e.target.value) || 0))} /></Field>}
+        {!form.gratuit && (
+          <Field title="Participation demandée par personne (€)">
+            <input
+              className={field}
+              type="text"
+              inputMode="decimal"
+              placeholder="Ex. 0, 15 ou 15,50"
+              value={form.participation}
+              onChange={(e) => set("participation", e.target.value.replace(/[^0-9,.]/g, ""))}
+            />
+          </Field>
+        )}
 
         <Field title="Informations complémentaires"><textarea className={field} rows={3} placeholder="Ex. petit bagage uniquement, passage par telle gare…" value={form.commentaires} onChange={(e) => set("commentaires", e.target.value)} /></Field>
 
@@ -518,7 +553,12 @@ function TransportReservationDialog({
         {confirmation ? (
           <div className="mt-5 grid gap-4 rounded-2xl border border-[#6D1925]/10 bg-white/75 p-5">
             <h3 className="font-serif text-2xl font-semibold text-[#6D1925]">Réservation confirmée</h3>
-            <p className="text-sm text-[#5B4549]">{confirmation.emailSent ? "Votre place est décomptée. Vous pouvez contacter la personne ci-dessous." : "Votre place est décomptée. Vous pouvez contacter la personne ci-dessous ; la notification par email a échoué."}</p>
+            <p className="rounded-xl bg-[#FFF7E9] p-4 text-sm font-semibold leading-6 text-[#6D1925]">
+              Votre place est réservée. Contactez maintenant le conducteur ou propriétaire de cette offre pour confirmer les détails du trajet et vous assurer que tout se passe correctement.
+            </p>
+            {!confirmation.emailSent && (
+              <p className="text-xs text-[#6D1925]/65">La réservation est bien enregistrée ; seule la notification automatique par email n’a pas abouti.</p>
+            )}
             {confirmation.providerContact && <div className="rounded-xl bg-[#FFF7E9] p-4 text-sm text-[#4B242B]"><p className="font-semibold">Contact : {confirmation.providerContact.name}</p>{confirmation.providerContact.phone && <a className="block underline" href={`tel:${confirmation.providerContact.phone}`}>{confirmation.providerContact.phone}</a>}{confirmation.providerContact.email && <a className="block underline" href={`mailto:${confirmation.providerContact.email}`}>{confirmation.providerContact.email}</a>}{confirmation.providerContact.address && <div className="mt-3"><p className="font-semibold">Vérifiez le lieu exact de votre prise en charge :</p><a className="block underline" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(confirmation.providerContact.address)}`}>📍 {confirmation.providerContact.address} · ouvrir dans Google Maps</a></div>}{confirmation.providerContact.members?.length > 0 && <div className="mt-3 border-t border-[#6D1925]/10 pt-3"><p className="font-semibold">Autres participants confirmés</p>{confirmation.providerContact.members.map((member, i) => <p key={`${member.email}-${i}`}>{member.name} · <a className="underline" href={`mailto:${member.email}`}>{member.email}</a></p>)}</div>}</div>}
             <a href={confirmation.cancellationUrl} className="text-sm font-semibold underline text-[#6D1925]">Conserver mon lien pour annuler cette place si besoin</a>
             {!confirmation.whatsappUrl && <a href={confirmation.groupUrl} className="text-sm font-semibold underline text-[#6D1925]">Voir le groupe WhatsApp ou le créer à partir de trois personnes</a>}
@@ -563,11 +603,11 @@ function TransportReservationDialog({
           <div className="rounded-2xl border border-[#6D1925]/10 bg-white/70 p-4">
             <p className="text-xs uppercase tracking-wide text-[#6D1925]/55">Participation totale</p>
             <p className="mt-1 font-serif text-3xl font-semibold text-[#6D1925]">
-              {total === 0 ? "Gratuit" : total.toFixed(0) + " €"}
+              {total === 0 ? "Gratuit" : money(total) + " €"}
             </p>
             {!veh.gratuit && (
               <p className="mt-1 text-xs text-[#5B4549]">
-                {form.nbPersonnes} place{form.nbPersonnes > 1 ? "s" : ""} × {Number(veh.participation || 0).toFixed(0)} €
+                {form.nbPersonnes} place{form.nbPersonnes > 1 ? "s" : ""} × {money(Number(veh.participation || 0))} €
               </p>
             )}
           </div>

@@ -3,6 +3,7 @@ export type Gender = "homme" | "femme" | "homme_et_femme"
 export type TransportType = "trajet" | "navette"
 export type ReservationType = "accommodation" | "vehicle"
 export type ReservationStatus = "confirmee" | "annulee"
+export type AccommodationPriceMode = "per_night" | "fixed_stay"
 
 export const ACCOMMODATION_TYPES: AccommodationType[] = [
   "Airbnb",
@@ -46,6 +47,8 @@ export interface Accommodation {
   date_entree: string | null
   date_sortie: string | null
   prix_personne_nuit: number
+  prix_mode: AccommodationPriceMode
+  nuits_minimum: number
   enfants_acceptes: boolean
   animaux_acceptes: boolean
   actif: boolean
