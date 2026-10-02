@@ -28,107 +28,21 @@ function WeddingVerseCard() {
 }
 
 function SongButton() {
-  const [playing, setPlaying] = useState(false)
-  const [ready, setReady] = useState(false)
-  const playerRef = useRef<any>(null)
-
-  useEffect(() => {
-    let cancelled = false
-
-    const createPlayer = () => {
-      const YT = (window as any).YT
-      if (cancelled || !YT?.Player || playerRef.current) return
-
-      playerRef.current = new YT.Player("mk-youtube-audio", {
-        width: "100%",
-        height: "100%",
-        videoId: "w0NEOVbU3hQ",
-        playerVars: {
-          playsinline: 1,
-          controls: 0,
-          rel: 0,
-          fs: 0,
-          disablekb: 1,
-          loop: 1,
-          playlist: "w0NEOVbU3hQ",
-          origin: "https://mariage-mk-app.vercel.app",
-        },
-        events: {
-          onReady: (event: any) => {
-            if (cancelled) return
-            event.target.setVolume(100)
-            event.target.unMute()
-            setReady(true)
-          },
-          onStateChange: (event: any) => {
-            if (cancelled) return
-            const PlayerState = (window as any).YT?.PlayerState
-            if (event.data === PlayerState?.PLAYING) setPlaying(true)
-            if (
-              event.data === PlayerState?.PAUSED ||
-              event.data === PlayerState?.ENDED ||
-              event.data === PlayerState?.CUED
-            ) {
-              setPlaying(false)
-            }
-          },
-        },
-      })
-    }
-
-    if ((window as any).YT?.Player) {
-      createPlayer()
-    } else {
-      const previousReady = (window as any).onYouTubeIframeAPIReady
-      ;(window as any).onYouTubeIframeAPIReady = () => {
-        if (typeof previousReady === "function") previousReady()
-        createPlayer()
-      }
-
-      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
-        const script = document.createElement("script")
-        script.src = "https://www.youtube.com/iframe_api"
-        script.async = true
-        document.head.appendChild(script)
-      }
-    }
-
-    return () => {
-      cancelled = true
-      try {
-        playerRef.current?.destroy?.()
-      } catch {}
-      playerRef.current = null
-    }
-  }, [])
-
-  function pauseSong() {
-    if (!playing) return
-    playerRef.current?.pauseVideo?.()
-  }
-
   return (
-    <div className="fixed bottom-3 right-3 z-50 sm:bottom-4 sm:right-4">
-      <div className="relative overflow-hidden rounded-full shadow-lg">
-        <button
-          type="button"
-          onClick={pauseSong}
-          disabled={!ready}
-          className="relative z-0 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-[#6D1925] px-3.5 text-xs font-bold text-[#FFF7E9] disabled:cursor-wait disabled:opacity-70 sm:px-4 sm:text-sm"
-          aria-label={playing ? "Mettre notre chanson en pause" : "Lire notre chanson"}
-        >
-          {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
-          <span>{ready ? "Notre chanson" : "Chargement…"}</span>
-          <Music2 className={`h-4 w-4 ${playing ? "animate-spin" : ""}`} aria-hidden="true" />
-        </button>
+    <div className="fixed bottom-3 right-3 z-50 w-[220px] overflow-hidden rounded-2xl border border-white/15 bg-[#6D1925] shadow-lg sm:bottom-4 sm:right-4 sm:w-[260px]">
+      <div className="flex items-center gap-2 px-3 py-2 text-[#FFF7E9]">
+        <Music2 className="h-4 w-4" aria-hidden="true" />
+        <span className="text-xs font-bold sm:text-sm">Notre chanson</span>
+      </div>
 
-        <div
-          aria-hidden="true"
-          className={`absolute inset-0 z-10 overflow-hidden rounded-full ${playing ? "pointer-events-none" : "pointer-events-auto"}`}
-          style={{ opacity: 0.001 }}
-        >
-          <div id="mk-youtube-audio" className="h-full w-full" />
-        </div>
+      <div className="aspect-video w-full bg-black">
+        <iframe
+          title="Notre chanson — His Robes for Mine"
+          src="https://www.youtube-nocookie.com/embed/w0NEOVbU3hQ?playsinline=1&controls=1&rel=0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          className="h-full w-full border-0"
+        />
       </div>
     </div>
   )
