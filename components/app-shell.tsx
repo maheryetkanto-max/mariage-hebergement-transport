@@ -40,15 +40,18 @@ function SongButton() {
       if (cancelled || !YT?.Player || playerRef.current) return
 
       playerRef.current = new YT.Player("mk-youtube-audio", {
-        width: "220",
-        height: "220",
+        width: "100%",
+        height: "100%",
         videoId: "w0NEOVbU3hQ",
         playerVars: {
           playsinline: 1,
           controls: 0,
           rel: 0,
+          fs: 0,
+          disablekb: 1,
           loop: 1,
           playlist: "w0NEOVbU3hQ",
+          origin: "https://mariage-mk-app.vercel.app",
         },
         events: {
           onReady: (event: any) => {
@@ -61,7 +64,13 @@ function SongButton() {
             if (cancelled) return
             const PlayerState = (window as any).YT?.PlayerState
             if (event.data === PlayerState?.PLAYING) setPlaying(true)
-            if (event.data === PlayerState?.PAUSED || event.data === PlayerState?.ENDED) setPlaying(false)
+            if (
+              event.data === PlayerState?.PAUSED ||
+              event.data === PlayerState?.ENDED ||
+              event.data === PlayerState?.CUED
+            ) {
+              setPlaying(false)
+            }
           },
         },
       })
@@ -93,46 +102,35 @@ function SongButton() {
     }
   }, [])
 
-  function toggleSong() {
-    const player = playerRef.current
-    if (!player || !ready) return
-
-    if (playing) {
-      player.pauseVideo()
-      setPlaying(false)
-      return
-    }
-
-    // Explicitly unmute and set full volume from the user's tap.
-    player.unMute()
-    player.setVolume(100)
-    player.playVideo()
-    setPlaying(true)
+  function pauseSong() {
+    if (!playing) return
+    playerRef.current?.pauseVideo?.()
   }
 
   return (
-    <>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed -left-[9999px] top-0 h-[220px] w-[220px] overflow-hidden opacity-0"
-      >
-        <div id="mk-youtube-audio" />
-      </div>
-
-      <div className="fixed bottom-3 right-3 z-50 sm:bottom-4 sm:right-4">
+    <div className="fixed bottom-3 right-3 z-50 sm:bottom-4 sm:right-4">
+      <div className="relative overflow-hidden rounded-full shadow-lg">
         <button
           type="button"
-          onClick={toggleSong}
+          onClick={pauseSong}
           disabled={!ready}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-[#6D1925] px-3.5 text-xs font-bold text-[#FFF7E9] shadow-lg disabled:cursor-wait disabled:opacity-70 sm:px-4 sm:text-sm"
+          className="relative z-0 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-[#6D1925] px-3.5 text-xs font-bold text-[#FFF7E9] disabled:cursor-wait disabled:opacity-70 sm:px-4 sm:text-sm"
           aria-label={playing ? "Mettre notre chanson en pause" : "Lire notre chanson"}
         >
           {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
           <span>{ready ? "Notre chanson" : "Chargement…"}</span>
           <Music2 className={`h-4 w-4 ${playing ? "animate-spin" : ""}`} aria-hidden="true" />
         </button>
+
+        <div
+          aria-hidden="true"
+          className={`absolute inset-0 z-10 overflow-hidden rounded-full ${playing ? "pointer-events-none" : "pointer-events-auto"}`}
+          style={{ opacity: 0.001 }}
+        >
+          <div id="mk-youtube-audio" className="h-full w-full" />
+        </div>
       </div>
-    </>
+    </div>
   )
 }
 
