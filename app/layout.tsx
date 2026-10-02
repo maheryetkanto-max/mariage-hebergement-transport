@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   description:
     "Trouvez ou proposez un hébergement et un transport pour le mariage de Mahery & Kanto.",
   openGraph: {
-    title: "Mahery & Kanto — Mariage du 31 décembre 2026",
+    title: "Mahery & Kanto — Covoiturage & Cohébergement",
     description:
       "Hébergement & transport pour le mariage de Mahery & Kanto.",
     url: "https://mariage-mk-app.vercel.app",
@@ -39,10 +39,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mahery & Kanto — Mariage du 31 décembre 2026",
+    title: "Mahery & Kanto — Covoiturage & Cohébergement",
     description:
       "Hébergement & transport pour le mariage de Mahery & Kanto.",
-    images: ["/og-photo"],
+    images: ["/og-covoiturage-hebergement.jpg"],
   },
 }
 
