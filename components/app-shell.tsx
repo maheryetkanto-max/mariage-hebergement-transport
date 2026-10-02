@@ -16,10 +16,10 @@ function WeddingVerseCard() {
   return (
     <aside
       aria-label="Verset du mariage"
-      className="fixed bottom-3 left-3 z-40 w-[190px] rounded-2xl border border-[#6D1925]/15 bg-[#FFF7E9]/95 p-3 text-[#6D1925] shadow-lg backdrop-blur sm:bottom-4 sm:left-4 sm:w-[250px] sm:p-4"
+      className="fixed bottom-3 left-3 z-40 w-[190px] rounded-2xl border border-white/15 bg-[#6D1925]/95 p-3 text-[#FFF7E9] shadow-lg backdrop-blur sm:bottom-4 sm:left-4 sm:w-[250px] sm:p-4"
     >
       <p className="font-serif text-sm font-semibold leading-tight sm:text-base">Éphésiens 3:20-21</p>
-      <p className="mt-1.5 text-[9px] leading-[1.35] text-[#5B4549] sm:text-[10px]">
+      <p className="mt-1.5 text-[9px] leading-[1.35] text-white/85 sm:text-[10px]">
         Or à celui qui peut faire par la puissance qui agit en nous, infiniment au-delà de tout ce que nous demandons ou pensons,
         à lui soit la gloire dans l’Église et en Jésus-Christ dans toutes les générations, aux siècles des siècles. Amen.
       </p>
@@ -31,52 +31,43 @@ function SongButton() {
   const [playing, setPlaying] = useState(false)
   const playerRef = useRef<HTMLIFrameElement | null>(null)
 
-  function commandPlayer(command: "playVideo" | "pauseVideo") {
-    const message = JSON.stringify({
-      event: "command",
-      func: command,
-      args: [],
-    })
-    playerRef.current?.contentWindow?.postMessage(message, "*")
-  }
-
   function toggleSong() {
+    if (!playerRef.current) return
+
     if (playing) {
-      commandPlayer("pauseVideo")
+      playerRef.current.src = "about:blank"
       setPlaying(false)
       return
     }
 
-    // The player is already loaded in the page. Sending playVideo directly
-    // from the user's tap lets Safari/iOS treat it as a user-initiated action.
-    commandPlayer("playVideo")
-    window.setTimeout(() => commandPlayer("playVideo"), 180)
+    // Start the YouTube embed synchronously from the user's tap.
+    // This is more reliable on Safari/iPhone than trying to autoplay
+    // a hidden player that was started in the background.
+    playerRef.current.src =
+      "https://www.youtube.com/embed/w0NEOVbU3hQ?autoplay=1&playsinline=1&controls=0&rel=0&loop=1&playlist=w0NEOVbU3hQ"
     setPlaying(true)
   }
 
   return (
     <>
-      <div
+      <iframe
+        ref={playerRef}
+        id="mk-song-player"
+        title="Notre chanson"
+        src="about:blank"
+        allow="autoplay; encrypted-media"
+        width="2"
+        height="2"
+        tabIndex={-1}
         aria-hidden="true"
-        className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px overflow-hidden opacity-0"
-      >
-        <iframe
-          ref={playerRef}
-          id="mk-song-player"
-          title="Notre chanson"
-          src="https://www.youtube.com/embed/w0NEOVbU3hQ?enablejsapi=1&playsinline=1&controls=0&rel=0&loop=1&playlist=w0NEOVbU3hQ"
-          allow="autoplay; encrypted-media"
-          width="1"
-          height="1"
-          className="border-0"
-        />
-      </div>
+        className="pointer-events-none fixed bottom-0 right-0 h-[2px] w-[2px] border-0 opacity-0"
+      />
 
       <div className="fixed bottom-3 right-3 z-50 sm:bottom-4 sm:right-4">
         <button
           type="button"
           onClick={toggleSong}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#6D1925]/15 bg-[#FFF7E9]/95 px-3.5 text-xs font-bold text-[#6D1925] shadow-lg backdrop-blur sm:px-4 sm:text-sm"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-[#6D1925] px-3.5 text-xs font-bold text-[#FFF7E9] shadow-lg sm:px-4 sm:text-sm"
           aria-label={playing ? "Mettre notre chanson en pause" : "Lire notre chanson"}
         >
           {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
