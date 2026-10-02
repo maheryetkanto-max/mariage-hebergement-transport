@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BedDouble, Car, Globe2, Home, Pause, Play } from "lucide-react"
+import { BedDouble, Car, Globe2, Home, Music2, Pause, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const NAV = [
@@ -31,33 +31,21 @@ function SongButton() {
   const [playing, setPlaying] = useState(false)
 
   return (
-    <div className="fixed bottom-3 right-3 z-50 flex flex-col items-end gap-2 sm:bottom-4 sm:right-4">
+    <div className="fixed bottom-3 right-3 z-50 sm:bottom-4 sm:right-4">
       {playing && (
-        <div className="w-[235px] overflow-hidden rounded-2xl border border-[#6D1925]/15 bg-[#FFF7E9]/98 p-2 shadow-2xl backdrop-blur sm:w-[280px]">
-          <div className="mb-2 flex items-center justify-between gap-2 px-1">
-            <div>
-              <p className="font-serif text-sm font-semibold text-[#6D1925]">Notre chanson</p>
-              <p className="text-[9px] uppercase tracking-[0.14em] text-[#6D1925]/45">Mahery & Kanto</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setPlaying(false)}
-              className="rounded-full border border-[#6D1925]/10 bg-white/70 px-2.5 py-1 text-[10px] font-bold text-[#6D1925]"
-              aria-label="Mettre notre chanson en pause"
-            >
-              Pause
-            </button>
-          </div>
-          <div className="aspect-video overflow-hidden rounded-xl bg-black">
-            <iframe
-              id="mk-song-player"
-              title="Notre chanson"
-              src="https://www.youtube-nocookie.com/embed/w0NEOVbU3hQ?autoplay=1&playsinline=1&controls=1&rel=0&loop=1&playlist=w0NEOVbU3hQ"
-              allow="autoplay; encrypted-media; picture-in-picture"
-              allowFullScreen
-              className="h-full w-full border-0"
-            />
-          </div>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px overflow-hidden opacity-0"
+        >
+          <iframe
+            id="mk-song-player"
+            title="Notre chanson"
+            src="https://www.youtube-nocookie.com/embed/w0NEOVbU3hQ?autoplay=1&playsinline=1&controls=0&rel=0&loop=1&playlist=w0NEOVbU3hQ"
+            allow="autoplay; encrypted-media"
+            width="1"
+            height="1"
+            className="border-0"
+          />
         </div>
       )}
 
@@ -69,6 +57,7 @@ function SongButton() {
       >
         {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
         <span>Notre chanson</span>
+        <Music2 className={`h-4 w-4 ${playing ? "animate-spin" : ""}`} aria-hidden="true" />
       </button>
     </div>
   )
