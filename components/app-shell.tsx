@@ -29,10 +29,10 @@ function WeddingVerseCard() {
 
 function SongButton() {
   return (
-    <div className="fixed bottom-3 right-3 z-50 w-[220px] overflow-hidden rounded-2xl border border-white/15 bg-[#6D1925] shadow-lg sm:bottom-4 sm:right-4 sm:w-[260px]">
-      <div className="flex items-center gap-2 px-3 py-2 text-[#FFF7E9]">
-        <Music2 className="h-4 w-4" aria-hidden="true" />
-        <span className="text-xs font-bold sm:text-sm">Notre chanson</span>
+    <div className="fixed bottom-3 right-3 z-50 w-[calc(100vw-226px)] max-w-[145px] overflow-hidden rounded-xl border border-white/15 bg-[#6D1925] shadow-lg sm:bottom-4 sm:right-4 sm:w-[260px] sm:max-w-none sm:rounded-2xl">
+      <div className="flex items-center gap-1.5 px-2 py-1.5 text-[#FFF7E9] sm:gap-2 sm:px-3 sm:py-2">
+        <Music2 className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
+        <span className="truncate text-[10px] font-bold sm:text-sm">Notre chanson</span>
       </div>
 
       <div className="aspect-video w-full bg-black">
