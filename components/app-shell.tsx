@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { BedDouble, Car, Globe2, Home, Music2, Pause, Play } from "lucide-react"
@@ -29,49 +29,106 @@ function WeddingVerseCard() {
 
 function SongButton() {
   const [playing, setPlaying] = useState(false)
-  const playerRef = useRef<HTMLIFrameElement | null>(null)
+  const [ready, setReady] = useState(false)
+  const playerRef = useRef<any>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const createPlayer = () => {
+      const YT = (window as any).YT
+      if (cancelled || !YT?.Player || playerRef.current) return
+
+      playerRef.current = new YT.Player("mk-youtube-audio", {
+        width: "220",
+        height: "220",
+        videoId: "w0NEOVbU3hQ",
+        playerVars: {
+          playsinline: 1,
+          controls: 0,
+          rel: 0,
+          loop: 1,
+          playlist: "w0NEOVbU3hQ",
+        },
+        events: {
+          onReady: (event: any) => {
+            if (cancelled) return
+            event.target.setVolume(100)
+            event.target.unMute()
+            setReady(true)
+          },
+          onStateChange: (event: any) => {
+            if (cancelled) return
+            const PlayerState = (window as any).YT?.PlayerState
+            if (event.data === PlayerState?.PLAYING) setPlaying(true)
+            if (event.data === PlayerState?.PAUSED || event.data === PlayerState?.ENDED) setPlaying(false)
+          },
+        },
+      })
+    }
+
+    if ((window as any).YT?.Player) {
+      createPlayer()
+    } else {
+      const previousReady = (window as any).onYouTubeIframeAPIReady
+      ;(window as any).onYouTubeIframeAPIReady = () => {
+        if (typeof previousReady === "function") previousReady()
+        createPlayer()
+      }
+
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const script = document.createElement("script")
+        script.src = "https://www.youtube.com/iframe_api"
+        script.async = true
+        document.head.appendChild(script)
+      }
+    }
+
+    return () => {
+      cancelled = true
+      try {
+        playerRef.current?.destroy?.()
+      } catch {}
+      playerRef.current = null
+    }
+  }, [])
 
   function toggleSong() {
-    if (!playerRef.current) return
+    const player = playerRef.current
+    if (!player || !ready) return
 
     if (playing) {
-      playerRef.current.src = "about:blank"
+      player.pauseVideo()
       setPlaying(false)
       return
     }
 
-    // Start the YouTube embed synchronously from the user's tap.
-    // This is more reliable on Safari/iPhone than trying to autoplay
-    // a hidden player that was started in the background.
-    playerRef.current.src =
-      "https://www.youtube.com/embed/w0NEOVbU3hQ?autoplay=1&playsinline=1&controls=0&rel=0&loop=1&playlist=w0NEOVbU3hQ"
+    // Explicitly unmute and set full volume from the user's tap.
+    player.unMute()
+    player.setVolume(100)
+    player.playVideo()
     setPlaying(true)
   }
 
   return (
     <>
-      <iframe
-        ref={playerRef}
-        id="mk-song-player"
-        title="Notre chanson"
-        src="about:blank"
-        allow="autoplay; encrypted-media"
-        width="2"
-        height="2"
-        tabIndex={-1}
+      <div
         aria-hidden="true"
-        className="pointer-events-none fixed bottom-0 right-0 h-[2px] w-[2px] border-0 opacity-0"
-      />
+        className="pointer-events-none fixed -left-[9999px] top-0 h-[220px] w-[220px] overflow-hidden opacity-0"
+      >
+        <div id="mk-youtube-audio" />
+      </div>
 
       <div className="fixed bottom-3 right-3 z-50 sm:bottom-4 sm:right-4">
         <button
           type="button"
           onClick={toggleSong}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-[#6D1925] px-3.5 text-xs font-bold text-[#FFF7E9] shadow-lg sm:px-4 sm:text-sm"
+          disabled={!ready}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-[#6D1925] px-3.5 text-xs font-bold text-[#FFF7E9] shadow-lg disabled:cursor-wait disabled:opacity-70 sm:px-4 sm:text-sm"
           aria-label={playing ? "Mettre notre chanson en pause" : "Lire notre chanson"}
         >
           {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
-          <span>Notre chanson</span>
+          <span>{ready ? "Notre chanson" : "Chargement…"}</span>
           <Music2 className={`h-4 w-4 ${playing ? "animate-spin" : ""}`} aria-hidden="true" />
         </button>
       </div>
