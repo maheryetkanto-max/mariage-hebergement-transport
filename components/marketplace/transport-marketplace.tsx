@@ -231,8 +231,8 @@ export function TransportMarketplace() {
               </select>
             </div>
             <div>
-              <span className={label}>Ville de retour (autour de Troyes)</span>
-              <CityPicker className={field} label="Chercher une ville de retour autour de Troyes" area="troyes-2h" placeholder="Tapez une ville…" value={returnCity} onChange={setReturnCity} />
+              <span className={label}>Ville de prise en charge (autour de Troyes)</span>
+              <CityPicker className={field} label="Chercher une ville de prise en charge autour de Troyes" area="troyes-2h" placeholder="Tapez une ville…" value={returnCity} onChange={setReturnCity} />
             </div>
             <div>
               <span className={label}>Places nécessaires (adultes et enfants)</span>
