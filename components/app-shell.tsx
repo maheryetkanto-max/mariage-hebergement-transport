@@ -28,18 +28,19 @@ function WeddingVerseBanner() {
 
 function SongButton() {
   return (
-    <div className="fixed bottom-3 right-3 z-50 w-[210px] overflow-hidden rounded-xl border border-white/15 bg-[#6D1925] shadow-lg sm:bottom-4 sm:right-4 sm:w-[230px]">
-      <div className="flex h-9 items-center gap-1.5 px-3 text-[#FFF7E9]">
-        <Music2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        <span className="truncate text-[10px] font-bold sm:text-xs">Notre chanson</span>
+    <div className="fixed bottom-3 right-3 z-50 w-[220px] overflow-hidden rounded-2xl border border-white/15 bg-[#6D1925] shadow-lg sm:bottom-4 sm:right-4 sm:w-[260px]">
+      <div className="flex items-center gap-2 px-3 py-2 text-[#FFF7E9]">
+        <Music2 className="h-4 w-4" aria-hidden="true" />
+        <span className="text-xs font-bold sm:text-sm">Notre chanson</span>
       </div>
-      <div className="relative h-10 w-full overflow-hidden bg-black">
+
+      <div className="aspect-video w-full bg-black">
         <iframe
           title="Notre chanson — His Robes for Mine"
           src="https://www.youtube-nocookie.com/embed/w0NEOVbU3hQ?playsinline=1&controls=1&rel=0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
-          className="absolute bottom-0 left-0 h-[118px] w-full border-0"
+          className="h-full w-full border-0"
         />
       </div>
     </div>
