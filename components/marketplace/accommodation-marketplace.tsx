@@ -244,7 +244,7 @@ export function AccommodationMarketplace() {
                         )}
                       </div>
                       <p className="mt-1 text-sm text-[#5B4549]">
-                        Proposé par <strong>{genderEmoji(acc.genre_proposant)} {acc.propose_par || acc.contact || "Un invité"}</strong>
+                        Proposé par <strong>{acc.propose_par || acc.contact || "Un invité"}</strong>
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
@@ -279,7 +279,6 @@ export function AccommodationMarketplace() {
                   <div className="flex flex-wrap gap-2">
                     <Sticker>{acc.enfants_acceptes ? "👶 Enfants OK" : "🚫👶 Sans enfants"}</Sticker>
                     <Sticker>{acc.animaux_acceptes ? "🐶 Animaux OK" : "🚫🐶 Sans animaux"}</Sticker>
-                    <Sticker>{genderEmoji(acc.genre_proposant)} {acc.genre_proposant === "femme" ? "Proposée par une femme" : acc.genre_proposant === "homme" ? "Proposé par un homme" : "Hôte"}</Sticker>
                   </div>
 
                   <div className="border-t border-[#6D1925]/8 pt-4">
