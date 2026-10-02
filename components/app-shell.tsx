@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { BedDouble, Car, Globe2, Home, Music2, Pause, Play } from "lucide-react"
@@ -29,37 +29,62 @@ function WeddingVerseCard() {
 
 function SongButton() {
   const [playing, setPlaying] = useState(false)
+  const playerRef = useRef<HTMLIFrameElement | null>(null)
+
+  function commandPlayer(command: "playVideo" | "pauseVideo") {
+    const message = JSON.stringify({
+      event: "command",
+      func: command,
+      args: [],
+    })
+    playerRef.current?.contentWindow?.postMessage(message, "*")
+  }
+
+  function toggleSong() {
+    if (playing) {
+      commandPlayer("pauseVideo")
+      setPlaying(false)
+      return
+    }
+
+    // The player is already loaded in the page. Sending playVideo directly
+    // from the user's tap lets Safari/iOS treat it as a user-initiated action.
+    commandPlayer("playVideo")
+    window.setTimeout(() => commandPlayer("playVideo"), 180)
+    setPlaying(true)
+  }
 
   return (
-    <div className="fixed bottom-3 right-3 z-50 sm:bottom-4 sm:right-4">
-      {playing && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px overflow-hidden opacity-0"
-        >
-          <iframe
-            id="mk-song-player"
-            title="Notre chanson"
-            src="https://www.youtube-nocookie.com/embed/w0NEOVbU3hQ?autoplay=1&playsinline=1&controls=0&rel=0&loop=1&playlist=w0NEOVbU3hQ"
-            allow="autoplay; encrypted-media"
-            width="1"
-            height="1"
-            className="border-0"
-          />
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={() => setPlaying((value) => !value)}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#6D1925]/15 bg-[#FFF7E9]/95 px-3.5 text-xs font-bold text-[#6D1925] shadow-lg backdrop-blur sm:px-4 sm:text-sm"
-        aria-label={playing ? "Mettre notre chanson en pause" : "Lire notre chanson"}
+    <>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px overflow-hidden opacity-0"
       >
-        {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
-        <span>Notre chanson</span>
-        <Music2 className={`h-4 w-4 ${playing ? "animate-spin" : ""}`} aria-hidden="true" />
-      </button>
-    </div>
+        <iframe
+          ref={playerRef}
+          id="mk-song-player"
+          title="Notre chanson"
+          src="https://www.youtube.com/embed/w0NEOVbU3hQ?enablejsapi=1&playsinline=1&controls=0&rel=0&loop=1&playlist=w0NEOVbU3hQ"
+          allow="autoplay; encrypted-media"
+          width="1"
+          height="1"
+          className="border-0"
+        />
+      </div>
+
+      <div className="fixed bottom-3 right-3 z-50 sm:bottom-4 sm:right-4">
+        <button
+          type="button"
+          onClick={toggleSong}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#6D1925]/15 bg-[#FFF7E9]/95 px-3.5 text-xs font-bold text-[#6D1925] shadow-lg backdrop-blur sm:px-4 sm:text-sm"
+          aria-label={playing ? "Mettre notre chanson en pause" : "Lire notre chanson"}
+        >
+          {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
+          <span>Notre chanson</span>
+          <Music2 className={`h-4 w-4 ${playing ? "animate-spin" : ""}`} aria-hidden="true" />
+        </button>
+      </div>
+    </>
   )
 }
 
