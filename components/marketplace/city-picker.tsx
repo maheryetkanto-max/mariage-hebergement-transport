@@ -93,15 +93,15 @@ export function CityPicker({ value, onChange, area, placeholder, className, labe
 
   const suggestions = useMemo(() => {
     const query = normalizeCity(value)
-    const matches = source.filter((city) => !query || normalizeCity(city.name).includes(query))
-    return matches
+    const matches = source
+      .filter((city) => !query || normalizeCity(city.name).includes(query))
       .sort((a, b) => {
         const aStarts = query && normalizeCity(a.name).startsWith(query) ? 0 : 1
         const bStarts = query && normalizeCity(b.name).startsWith(query) ? 0 : 1
         return aStarts - bStarts || a.name.localeCompare(b.name, "fr", { sensitivity: "base" })
       })
-      .slice(0, query ? 120 : 100)
-  }, [source, value])
+    return area === "troyes-2h" ? matches : matches.slice(0, query ? 120 : 100)
+  }, [source, value, area])
 
   return <div className="relative">
     <input
