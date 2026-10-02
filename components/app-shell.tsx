@@ -1,9 +1,8 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BedDouble, Car, Globe2, Home, Music2, Pause, Play } from "lucide-react"
+import { BedDouble, Car, Globe2, Home, Music2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const NAV = [
@@ -12,14 +11,14 @@ const NAV = [
   { href: "/transports", label: "Transport", icon: Car },
 ]
 
-function WeddingVerseCard() {
+function WeddingVerseBanner() {
   return (
     <aside
       aria-label="Verset du mariage"
-      className="fixed bottom-3 left-3 z-40 w-[190px] rounded-2xl border border-white/15 bg-[#6D1925]/95 p-3 text-[#FFF7E9] shadow-lg backdrop-blur sm:bottom-4 sm:left-4 sm:w-[250px] sm:p-4"
+      className="border-b border-[#6D1925]/10 bg-[#6D1925] px-4 py-2.5 text-center text-[#FFF7E9] sm:px-6 sm:py-3"
     >
       <p className="font-serif text-sm font-semibold leading-tight sm:text-base">Éphésiens 3:20-21</p>
-      <p className="mt-1.5 text-[9px] leading-[1.35] text-white/85 sm:text-[10px]">
+      <p className="mx-auto mt-1 max-w-4xl text-[9px] leading-[1.35] text-white/85 sm:text-[10px]">
         Or à celui qui peut faire par la puissance qui agit en nous, infiniment au-delà de tout ce que nous demandons ou pensons,
         à lui soit la gloire dans l’Église et en Jésus-Christ dans toutes les générations, aux siècles des siècles. Amen.
       </p>
@@ -29,19 +28,18 @@ function WeddingVerseCard() {
 
 function SongButton() {
   return (
-    <div className="fixed bottom-3 right-3 z-50 w-[calc(100vw-226px)] max-w-[145px] overflow-hidden rounded-xl border border-white/15 bg-[#6D1925] shadow-lg sm:bottom-4 sm:right-4 sm:w-[260px] sm:max-w-none sm:rounded-2xl">
-      <div className="flex items-center gap-1.5 px-2 py-1.5 text-[#FFF7E9] sm:gap-2 sm:px-3 sm:py-2">
-        <Music2 className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
-        <span className="truncate text-[10px] font-bold sm:text-sm">Notre chanson</span>
+    <div className="fixed bottom-3 right-3 z-50 w-[210px] overflow-hidden rounded-xl border border-white/15 bg-[#6D1925] shadow-lg sm:bottom-4 sm:right-4 sm:w-[230px]">
+      <div className="flex h-9 items-center gap-1.5 px-3 text-[#FFF7E9]">
+        <Music2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span className="truncate text-[10px] font-bold sm:text-xs">Notre chanson</span>
       </div>
-
-      <div className="aspect-video w-full bg-black">
+      <div className="relative h-10 w-full overflow-hidden bg-black">
         <iframe
           title="Notre chanson — His Robes for Mine"
           src="https://www.youtube-nocookie.com/embed/w0NEOVbU3hQ?playsinline=1&controls=1&rel=0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
-          className="h-full w-full border-0"
+          className="absolute bottom-0 left-0 h-[118px] w-full border-0"
         />
       </div>
     </div>
@@ -55,8 +53,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (isLegacyAdmin) {
     return (
       <div className="min-h-screen bg-background">
+        <WeddingVerseBanner />
         <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
-        <WeddingVerseCard />
         <SongButton />
       </div>
     )
@@ -64,6 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
+      <WeddingVerseBanner />
       <header className="sticky top-0 z-40 border-b border-[#6D1925]/10 bg-[#FFF7E9]/95 backdrop-blur">
         <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href="/" className="shrink-0">
@@ -107,7 +106,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         Mariage Mahery & Kanto · 31 décembre 2026
       </footer>
 
-      <WeddingVerseCard />
       <SongButton />
     </div>
   )
